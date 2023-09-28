@@ -11,10 +11,10 @@ K-space segmentation models
 
 ## Installation
 
-
 Clone the repo
+
 ```bash
-git clone git@git.ucsf.edu:rauschecker-sugrue-labs/kspace-segmentation.git
+git clone git@github.com:rauschecker-sugrue-labs/kspace-segmentation.git
 cd kspace-segmentation
 ```
 
@@ -27,6 +27,7 @@ pip install -e .
 ```
 
 ## Training
+
 Run
 
 ```bash
@@ -34,6 +35,7 @@ kseg train [model] [data]
 ```
 
 ## Create documentation
+
 To generate the documentation, make sure sphinx is installed and run
 
 ```bash
