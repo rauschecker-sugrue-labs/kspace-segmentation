@@ -168,8 +168,5 @@ notebooks/
 slurm.sh
 slurm_logs/
 
-# Config file
-config.yml
-
 # Tensorboard
 .tensorboard-info/
