@@ -289,9 +289,7 @@ class LitModel(pl.LightningModule):
             Variables in pixel domain.
         """
         vec2complex = Vec2Complex()
-        inv_kspace = InverseKSpace(
-            exclude_label=(self.label_domain == 'pixel')
-        )
+        inv_kspace = InverseKSpace(exclude_label=(self.label_domain == 'pixel'))
         transformed_variables = []
         for variable in variables:
             variable = [
