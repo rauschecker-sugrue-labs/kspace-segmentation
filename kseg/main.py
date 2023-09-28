@@ -204,9 +204,7 @@ def train(
     )
     results = tuner.fit()
 
-    print(
-        'Best hyperparameters found were: ', results.get_best_result().config
-    )
+    print('Best hyperparameters found were: ', results.get_best_result().config)
 
 
 @main.command()
@@ -214,11 +212,15 @@ def train(
 @click.argument('checkpoint_path', type=click.Path(exists=True))
 @click.option('--batch-size', default=4)
 @click.option('--num_gpus', '--gpus', default=1)
+@click.option(
+    '--config-path', default='./config.yml', type=click.Path(exists=True)
+)
 def test(
     data_name: str,
     checkpoint_path: str,
     batch_size: int,
     num_gpus: int = 1,
+    config_path: str = './config.yml',
 ) -> None:
     """Starts the testing routine using the passed parameters.
 
@@ -247,6 +249,10 @@ def test(
     model = LitModel.load_from_checkpoint(checkpoint_path)
     model.eval()
 
+    # Get config dict from YAML file without class substitutions
+    config_handler = ConfigHandler(config_path)
+    unparsed_config = config_handler.get_unparsed_config()
+
     # Initialize data module with domain config from checkpoint
     data_modules = {
         'Knee': KneeDataModule,
@@ -262,6 +268,7 @@ def test(
             batch_size=batch_size,
             input_domain=model.input_domain,
             label_domain=model.label_domain,
+            dataset_dir=unparsed_config['datasets'][data_name],
         )
     else:
         raise ValueError(f'Data module for {data_name} is not defined.')
