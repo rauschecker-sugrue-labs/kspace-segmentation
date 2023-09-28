@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools >= 58.0.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kseg"
+version = "1.0.0"
+authors = [
+    {name = "Reza Eghbali", email="eghbali@uw.edu"},
+    {email = "reza.eghbali@ucsf.edu"},
+    {name = "Erik Gosche", email="erik.gosche@ucsf.edu"},
+    {email = "erik.goesche@fau.de"}
+]
+description = "K-space segmentation models."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "click",
+    "opencv-python",
+    "einops",
+    "pytorch_lightning",
+    "ray",
+    "torch",
+    "torchio",
+]
+
+[tool.setuptools]
+py-modules = ["kseg"]
+
+[project.scripts]
+kseg = "kseg.main:main"

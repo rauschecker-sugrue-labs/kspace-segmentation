@@ -1,0 +1,84 @@
+name: "🐛 Bug Report"
+description: I found a bug (... or is it a feature?).
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thanks for reporting an issue!**
+
+        If you’re unsure whether the issue you’re having is a bug, you can post in Discussions instead.
+
+  - type: textarea
+    id: bug-steps
+    attributes:
+      label: What are the steps to reproduce this issue?
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: What happens?
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-expectation
+    attributes:
+      label: What were you expecting to happen?
+      description: A clear and concise description of what was supposed to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-logs
+    attributes:
+      label: Paste any relevant logs, error output, etc.
+      description: |
+        Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+        (If it’s long, please paste to https://gist.github.com/ and insert the link here.)
+      render: shell
+
+  - type: textarea
+    id: bug-context
+    attributes:
+      label: Additional context
+      description: Add any other context you can provide about the problem here.
+
+  - type: markdown
+    attributes:
+      value: |
+        ----
+        
+        # Details of your machine
+
+  - type: dropdown
+    id: client-os
+    attributes:
+      label: What OS is your client device running?
+      options:
+        - Windows
+        - macOS
+        - Linux
+      multiple: true
+    validations:
+      required: true
+
+  - type: input
+    id: client-os-version
+    attributes:
+      label: What OS version does it have installed?
+      placeholder: "e.g. Windows 11"
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: What Python version does it have installed?
+      placeholder: "e.g. Python 3.10.12"
+    validations:
+      required: true
