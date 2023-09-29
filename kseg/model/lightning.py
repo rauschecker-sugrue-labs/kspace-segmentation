@@ -11,12 +11,8 @@ from einops import rearrange
 from pathlib import Path
 from typing import Tuple, Dict, List, Any
 from torch.optim import lr_scheduler, Optimizer
-from torchmetrics.classification import (
-    MulticlassSpecificity,
-    MulticlassRecall,
-    BinaryRecall,
-    BinarySpecificity,
-)
+from torchmetrics import Specificity, Recall
+
 
 from kseg.data.transforms import InverseKSpace, Vec2Complex
 from kseg.model.modules import DiceScore
@@ -438,7 +434,7 @@ class LitModel(pl.LightningModule):
         num_classes: int,
     ) -> Tuple[float]:
         """Calculates the recall and specificity of a prediction given
-        the target.
+            the target.
 
         Args:
             pred: Prediction.
@@ -451,18 +447,11 @@ class LitModel(pl.LightningModule):
         pred = torch.flatten(torch.argmax(pred, dim=1)).to('cpu')
         gt = torch.flatten(torch.argmax(gt, dim=1)).to('cpu')
 
-        # use suitable metric class depending on the number of classes
-        if num_classes > 2:
-            recall_metric = MulticlassRecall(
-                num_classes=num_classes, average='none'
-            )
-            specificity_metric = MulticlassSpecificity(
-                num_classes=num_classes, average='none'
-            )
-        else:
-            recall_metric = BinaryRecall()
-            specificity_metric = BinarySpecificity()
-
+        # Calculate recall and specificity
+        recall_metric = Recall(num_classes=num_classes, average='none')
+        specificity_metric = Specificity(
+            num_classes=num_classes, average='none'
+        )
         per_class_recall = recall_metric(pred, gt)
         avg_recall = per_class_recall.mean()
         per_class_specificity = specificity_metric(pred, gt)
