@@ -447,10 +447,19 @@ class LitModel(pl.LightningModule):
         pred = torch.flatten(torch.argmax(pred, dim=1)).to('cpu')
         gt = torch.flatten(torch.argmax(gt, dim=1)).to('cpu')
 
+        if num_classes == 2:
+            num_classes -= 1
+
         # Calculate recall and specificity
-        recall_metric = Recall(num_classes=num_classes, average='none')
+        recall_metric = Recall(
+            num_classes=num_classes,
+            average='none',
+            multiclass=(num_classes > 1),
+        )
         specificity_metric = Specificity(
-            num_classes=num_classes, average='none'
+            num_classes=num_classes,
+            average='none',
+            multiclass=(num_classes > 1),
         )
         per_class_recall = recall_metric(pred, gt)
         avg_recall = per_class_recall.mean()
