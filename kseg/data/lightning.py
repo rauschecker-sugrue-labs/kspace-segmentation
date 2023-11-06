@@ -5,12 +5,20 @@ import re
 import pytorch_lightning as pl
 import torch
 import torchio
+from torchvision.datasets import ImageFolder
+import torchvision.transforms as transforms
 
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 from kseg.data.custom_torchio import NDScalarImage, NDLabelMap
-from kseg.data.transforms import KSpace, Complex2Vec, Unsqueeze
+from kseg.data.transforms import (
+    KSpace,
+    Complex2Vec,
+    Unsqueeze,
+    SimpleFreqSpace,
+    SimpleComplex2Vec,
+)
 
 
 class DataModuleBase(pl.LightningDataModule):
@@ -274,12 +282,8 @@ class DataModuleBase(pl.LightningDataModule):
                     self.get_preprocessing_transform().apply_transform(subject)
                 )
 
-                transformed_subject['input'].save(
-                    dir_path / f'input_{idx}.nii.gz'
-                )
-                transformed_subject['label'].save(
-                    dir_path / f'label_{idx}.nii.gz'
-                )
+                transformed_subject['input'].save(dir_path / f'input_{idx}.nii.gz')
+                transformed_subject['label'].save(dir_path / f'label_{idx}.nii.gz')
 
 
 class UCSF51LesionDataModule(DataModuleBase):
@@ -334,9 +338,7 @@ class UCSF51LesionDataModule(DataModuleBase):
         for image in image_files:
             accession = os.path.basename(image).split('_')[0]
             image_path = os.path.join(self.dataset_dir, f'{accession}.nii.gz')
-            seg_path = os.path.join(
-                self.dataset_dir, f'{accession}_seg.nii.gz'
-            )
+            seg_path = os.path.join(self.dataset_dir, f'{accession}_seg.nii.gz')
 
             subject = torchio.Subject(
                 input=NDScalarImage(image_path),
@@ -388,9 +390,7 @@ class CNSLymphomaSSDataModule(DataModuleBase):
     def prepare_data(self) -> None:
         """Creates the subject list based on the SkullStripping dataset dir."""
         self.subject_list = []
-        image_files = glob.glob(
-            str(Path(self.dataset_dir) / 'imagesTr' / '*.nii.gz')
-        )
+        image_files = glob.glob(str(Path(self.dataset_dir) / 'imagesTr' / '*.nii.gz'))
 
         current_identifier = None
         current_subjects = []
@@ -407,13 +407,9 @@ class CNSLymphomaSSDataModule(DataModuleBase):
                 current_subjects = []
 
             image_path = (
-                Path(self.dataset_dir)
-                / 'imagesTr'
-                / f'{accession}_0000.nii.gz'
+                Path(self.dataset_dir) / 'imagesTr' / f'{accession}_0000.nii.gz'
             )
-            seg_path = (
-                Path(self.dataset_dir) / 'labelsTr' / f'{accession}.nii.gz'
-            )
+            seg_path = Path(self.dataset_dir) / 'labelsTr' / f'{accession}.nii.gz'
 
             subject = torchio.Subject(
                 input=NDScalarImage(image_path),
@@ -468,17 +464,13 @@ class CNSLymphomaTissueDataModule(DataModuleBase):
     def prepare_data(self) -> None:
         """Creates the subject list based on the Tissue dataset dir."""
         self.subject_list = []
-        image_files = glob.glob(
-            os.path.join(self.dataset_dir, 'imagesTr', '*.nii.gz')
-        )
+        image_files = glob.glob(os.path.join(self.dataset_dir, 'imagesTr', '*.nii.gz'))
         for image in image_files:
             accession = os.path.basename(image).split('_')[0]
             image_path = os.path.join(
                 self.dataset_dir, 'imagesTr', f'{accession}_0000.nii.gz'
             )
-            seg_path = os.path.join(
-                self.dataset_dir, 'labelsTr', f'{accession}.nii.gz'
-            )
+            seg_path = os.path.join(self.dataset_dir, 'labelsTr', f'{accession}.nii.gz')
             subject = torchio.Subject(
                 input=NDScalarImage(image_path),
                 label=NDLabelMap(seg_path),
@@ -530,9 +522,7 @@ class KneeDataModule(DataModuleBase):
         for image in glob.glob(os.path.join(self.dataset_dir, '*_seg.nii.gz')):
             accession = os.path.basename(image).split('_')[0]
             image_path = os.path.join(self.dataset_dir, f'{accession}.nii.gz')
-            seg_path = os.path.join(
-                self.dataset_dir, f'{accession}_seg.nii.gz'
-            )
+            seg_path = os.path.join(self.dataset_dir, f'{accession}_seg.nii.gz')
 
             subject = torchio.Subject(
                 input=NDScalarImage(image_path),
@@ -605,9 +595,7 @@ class UPennGBMSSDataModule(DataModuleBase):
     def prepare_data(self) -> None:
         """Creates the subject list based on the UPennGBM dataset dir."""
         self.subject_list = []
-        image_dir = os.path.join(
-            self.dataset_dir, 'images_structural_unstripped'
-        )
+        image_dir = os.path.join(self.dataset_dir, 'images_structural_unstripped')
         stripped_dir = os.path.join(self.dataset_dir, 'images_structural')
 
         # Go through each subject's folder
@@ -720,18 +708,14 @@ class UPennGBMTumorDataModule(DataModuleBase):
                 continue
 
             # Look for the T1 image
-            t1_image_path = glob.glob(
-                os.path.join(subject_dir, '*_T1.nii.gz')
-            )[
+            t1_image_path = glob.glob(os.path.join(subject_dir, '*_T1.nii.gz'))[
                 0
             ]  # Taking the first match
             image_paths.append(t1_image_path)
             base_name = os.path.basename(t1_image_path).split('_T1.nii.gz')[0]
 
             # Check for manually segmented labels
-            manual_segm = os.path.join(
-                manual_segm_dir, f'{base_name}_segm.nii.gz'
-            )
+            manual_segm = os.path.join(manual_segm_dir, f'{base_name}_segm.nii.gz')
             if os.path.exists(manual_segm):
                 segmentation_paths.append(manual_segm)
             else:
@@ -828,19 +812,13 @@ class OasisTissueDataModule(DataModuleBase):
                 os.path.join(self.dataset_dir, subject_dir)
             ):
                 # Build the mri directory path
-                mri_dir_path = os.path.join(
-                    self.dataset_dir, subject_dir, 'mri'
-                )
+                mri_dir_path = os.path.join(self.dataset_dir, subject_dir, 'mri')
 
                 # Check if both files exist in the mri directory
                 aseg_path = os.path.join(mri_dir_path, 'aseg.nii.gz')
-                brain_mask_path = os.path.join(
-                    mri_dir_path, 'brainmask.nii.gz'
-                )
+                brain_mask_path = os.path.join(mri_dir_path, 'brainmask.nii.gz')
 
-                if os.path.exists(aseg_path) and os.path.exists(
-                    brain_mask_path
-                ):
+                if os.path.exists(aseg_path) and os.path.exists(brain_mask_path):
                     subject = torchio.Subject(
                         input=NDScalarImage(brain_mask_path),
                         label=NDLabelMap(aseg_path),
@@ -920,3 +898,68 @@ class OasisTissueDataModule(DataModuleBase):
             ]
         )
         return preprocess
+
+
+class ImageNetDataModule(pl.LightningDataModule):
+    def __init__(self, data_dir: str, input_domain: str, batch_size: int = 32) -> None:
+        self.data_dir = data_dir
+        self.input_domain = input_domain
+        self.batch_size = batch_size
+
+    def setup(self):
+        normalize = transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        )
+        traindir = os.path.join(self.data_dir, 'train')
+        valdir = os.path.join(self.data_dir, 'val')
+
+        if self.input_domain == 'freq':
+            domain_transfrom = [SimpleFreqSpace(), SimpleComplex2Vec()]
+        else:
+            domain_transform = [lambda x: x]
+
+        self.train_set = ImageFolder(
+            traindir,
+            transforms.Compose(
+                [
+                    transforms.RandomResizedCrop(224),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    normalize,
+                    *domain_transfrom,
+                ]
+            ),
+        )
+
+        self.val_set = ImageFolder(
+            valdir,
+            transforms.Compose(
+                [
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    normalize,
+                    *domain_transfrom,
+                ]
+            ),
+        )
+
+    def train_dataloader(self) -> torch.utils.data.DataLoader:
+        """Creates Dataloader for training phase.
+
+        Returns:
+            Dataloader for training phase.
+        """
+        return torch.utils.data.DataLoader(
+            self.train_set, self.batch_size, num_workers=32
+        )
+
+    def val_dataloader(self) -> torch.utils.data.DataLoader:
+        """Creates Dataloader for validation phase.
+
+        Returns:
+            Dataloader for validation phase.
+        """
+        return torch.utils.data.DataLoader(
+            self.val_set, self.batch_size, num_workers=10
+        )

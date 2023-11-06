@@ -146,9 +146,7 @@ class Complex2Vec(NDTransform, torchio.SpatialTransform):
         """
         for image in self.get_images(subject):
             if 'complex' in str(image.data.dtype):
-                image.set_data(
-                    torch.stack([image.data.real, image.data.imag], dim=1)
-                )
+                image.set_data(torch.stack([image.data.real, image.data.imag], dim=1))
             else:
                 image.set_data(torch.unsqueeze(image.data, dim=1))
         return subject
@@ -309,3 +307,19 @@ class Squeeze(NDTransform, torchio.SpatialTransform):
             Unsqueeze transformation.
         """
         return Unsqueeze()
+
+
+class SimpleFreqSpace(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, img):
+        return torch.fft.rfft2(img)
+
+
+class SimpleComplex2Vec(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x):
+        return torch.view_as_real(x)
