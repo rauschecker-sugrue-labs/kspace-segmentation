@@ -160,6 +160,7 @@ def train(
 
     # Display either hparams or standard parameter in CLIReporter
     if tuning:
+        # Replace grid search array by ray grid search object
         for key, value in config.items():
             if isinstance(value, list):
                 config[key] = tune.grid_search(value)
