@@ -4,16 +4,6 @@
 version: 1.0.0
 
 # Define the general training parameters here
-datasets:
-  UCSF51Lesion: /path/to/dataset/
-  CNSLymphomaSS: /path/to/dataset/
-  CNSLymphomaTissue: /path/to/dataset/
-  Knee: /path/to/dataset/
-  UPennGBMSS: /path/to/dataset/
-  UPennGBMTumor: /path/to/dataset/
-  OasisTissue: /path/to/dataset/
-
-# Define the general training parameters here
 training:
   epochs: 100
   lr: 0.01

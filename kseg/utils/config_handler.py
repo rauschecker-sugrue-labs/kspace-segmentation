@@ -6,7 +6,7 @@ import yaml
 
 from importlib import metadata
 from ray import tune
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 from kseg.data.lightning import DataModuleBase
 from kseg.model.loss import (
@@ -26,22 +26,50 @@ class ConfigHandler:
         """
         self.config_path = config_path
 
-    def get_unparsed_config(self) -> Dict[Any, Any]:
-        """Get the unsubstituted config.
+    def get_config(
+        self,
+        model_name: str,
+        epochs: int,
+        learning_rate: float,
+        step_size: int,
+        input_shape: Tuple[int],
+        label_shape: Tuple[int],
+        input_domain: str,
+        label_domain: str,
+        class_weights: List[float],
+        resume: bool,
+        tuning: bool,
+    ) -> Dict[Any, Any]:
+        """Get training configuration from config file.
+
+        Args:
+            model_name: Name of the model to train and test.
+            epochs: Number of training epochs.
+            learning_rate: Learning rate.
+            step_size: Step size.
+            input_shape: Shape of the input.
+            label_shape: Shape of the label.
+            input_domain: Domain of the input.
+            label_domain: Domain of the label.
+            class_weights: Class weights for the loss.
+            resume: Whether to resume an already existing training.
+            tuning: Whether hyperparameter tuning shall be used.
 
         Raises:
             DeprecationWarning: Raised if config version does not equal kseg
                 version.
+            ValueError: Raised if a model name is given for which there is no
+                configuration specified.
 
         Returns:
-            Unparsed config.
+            Config.
         """
         with open(self.config_path, 'r') as file:
-            config = yaml.safe_load(file)
+            unparsed_config = yaml.safe_load(file)
 
         # Check if the config file is compatible with current kseg version
         try:
-            if config['version'] != metadata.version('kseg'):
+            if unparsed_config['version'] != metadata.version('kseg'):
                 raise DeprecationWarning(
                     'The given config file version may not be compatible!'
                 )
@@ -49,14 +77,28 @@ class ConfigHandler:
             # If the kseg package is not installed, this check cannot be done
             pass
 
+        config = self._parse_config(unparsed_config, class_weights)
+        config = self._get_trial_specific_config(
+            config,
+            model_name,
+            input_shape,
+            label_shape,
+            input_domain,
+            label_domain,
+            epochs,
+            learning_rate,
+            step_size,
+            resume,
+            tuning,
+        )
         return config
 
-    def parse_config(
+    def _parse_config(
         self,
         unparsed_config: Dict[Any, Any],
         class_weights: Optional[List[float]] = None,
     ) -> Dict[Any, Any]:
-        """Substitute strings with the actual corresponding class.
+        """Substitute strings with the actual corresponding classes.
 
         Args:
             unparsed_config: Unparsed config.
@@ -95,29 +137,30 @@ class ConfigHandler:
             replace_pattern.update(weighted_losses)
 
         parsed_config = self._parse_objects(unparsed_config, replace_pattern)
-        parsed_config = self._parse_hparam_space(unparsed_config)
         return parsed_config
 
-    def get_trial_specific_config(
+    def _get_trial_specific_config(
         self,
         parsed_config: Dict[Any, Any],
         model_name: str,
-        data_module: DataModuleBase,
+        input_shape: Tuple[int],
+        label_shape: Tuple[int],
+        input_domain: str,
+        label_domain: str,
         epochs: int,
         learning_rate: float,
         step_size: int,
         resume: bool,
         tuning: bool,
     ) -> Dict[Any, Any]:
-        """Get the trail-specific configuration for training and model
-            creation considering the passed parameters, chosen data module and
-            the config file.
+        """Get the trial-specific configuration for training and model
+        creation considering the passed parameters, chosen data module and
+        the config file.
 
         Args:
             parsed_config: Parsed config.
             model_name: Name of the deep learning model for which the config should
                 be returned.
-            data_module: Data module which is used for the training.
             epochs: Number of training epochs.
             learning_rate: Learning rate for the training.
             step_size: Step size for the training.
@@ -151,10 +194,10 @@ class ConfigHandler:
         # Add information about shapes and domains. Write command line parameters
         # only if they were not set yet.
         defaults = {
-            'input_shape': data_module.input_shape,
-            'output_shape': data_module.label_shape,
-            'input_domain': data_module.input_domain,
-            'label_domain': data_module.label_domain,
+            'input_shape': input_shape,
+            'output_shape': label_shape,
+            'input_domain': input_domain,
+            'label_domain': label_domain,
             'epochs': epochs,
             'lr': learning_rate,
             'step_size': step_size,
@@ -183,32 +226,9 @@ class ConfigHandler:
                 # If the value is a list, iterate through
                 elif isinstance(value, list):
                     dictionary[key] = [
-                        new if item == old else item
-                        for item in dictionary[key]
+                        new if item == old else item for item in dictionary[key]
                     ]
                 # If the value is another dict, recursively search inside it
                 elif isinstance(value, dict):
                     self._parse_objects(value, replace_pattern)
-        return dictionary
-
-    def _parse_hparam_space(
-        self, dictionary: Dict[Any, Any]
-    ) -> Dict[Any, Any]:
-        """Parse hyperparameter spaces into ray tune grid search functions.
-
-        Args:
-            dictionary: Dictionary which contains hyperparameter spaces.
-
-        Note:
-            All lists will be treated as tune grid_search function arguments.
-
-        Returns:
-            Config containing ray tune grid search functions.
-        """
-        for key, value in dictionary.items():
-            if isinstance(value, list):
-                dictionary[key] = tune.grid_search(value)
-            # If the value is another dict, recursively search inside it
-            elif isinstance(value, dict):
-                self._parse_hparam_space(value)
         return dictionary
