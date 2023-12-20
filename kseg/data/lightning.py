@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 from kseg.data.custom_torchio import NDScalarImage, NDLabelMap
-from kseg.data.transforms import KSpace, Complex2Vec, Unsqueeze
+from kseg.data.transforms import KSpace, Complex2Vec, DWT, Unsqueeze
 
 
 class DataModuleBase(pl.LightningDataModule):
@@ -162,16 +162,22 @@ class DataModuleBase(pl.LightningDataModule):
         preprocess = self.get_preprocessing_transform()
         augment = self.get_augmentation_transform()
 
-        # If the input domain is not in k-space, neither is the label domain
-        if self.input_domain == 'kspace':
-            domain_transform = torchio.Compose(
-                [
-                    KSpace(
-                        exclude_label=(self.label_domain == 'pixel'),
-                    ),
-                    Complex2Vec(),
-                ]
-            )
+        # If the input domain is not in k-space or wavelet, neither is the
+        # label domain
+        if self.input_domain in {'kspace', 'wavelet'}:
+            if self.input_domain == 'kspace':
+                domain_transform = torchio.Compose(
+                    [
+                        KSpace(
+                            exclude_label=(self.label_domain == 'pixel'),
+                        ),
+                        Complex2Vec(),
+                    ]
+                )
+            else:
+                domain_transform = torchio.Compose(
+                    [DWT(exclude_label=(self.label_domain == 'pixel'))]
+                )
             self.train_transform = torchio.Compose(
                 [
                     preprocess,

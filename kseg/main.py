@@ -82,8 +82,8 @@ def train(
         epochs: Number of training epochs.
         learning_rate: Learning rate used for training.
         step_size: Step size for the scheduler.
-        input_domain: Target domain of inputs ('kspace' or 'pixel').
-        label_domain: Target domain of labels ('kspace' or 'pixel').
+        input_domain: Target domain of inputs ('kspace', 'wavelet' or 'pixel').
+        label_domain: Target domain of labels ('kspace', 'wavelet' or 'pixel').
         num_cpus: Number of CPUs used for the training or whole tuning task.
             Defaults to 32.
         num_gpus: Number of GPUs used for the training or whole tuning task.

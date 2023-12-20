@@ -14,7 +14,7 @@ from torch.optim import lr_scheduler, Optimizer
 from torchmetrics import Specificity, Recall
 
 
-from kseg.data.transforms import InverseKSpace, Vec2Complex
+from kseg.data.transforms import InverseKSpace, Vec2Complex, DWT
 from kseg.model.modules import DiceScore
 from kseg.model.modules import MLP, PerceiverIO, SkipMLP, ResMLP, Transformer
 
@@ -160,10 +160,8 @@ class LitModel(pl.LightningModule):
 
         # Convert input and label to pixel domain to calculate dice score and
         # display qualitative results
-        if self.label_domain == 'kspace':
-            y_hat, y = self.evaluation_transform([y_hat, y])
-        if self.input_domain == 'kspace':
-            x = self.evaluation_transform([x])[0]
+        y_hat, y = self.evaluation_transform([y_hat, y], self.label_domain)
+        x = self.evaluation_transform([x], self.input_domain)[0]
         # After iFFT there are imprecisions which result in numbers with
         # fractional parts. Use round() and convert to integer {0,1}.
         y = y.round().int()
@@ -213,10 +211,8 @@ class LitModel(pl.LightningModule):
 
         # Convert input and label to pixel domain to calculate dice score and
         # display qualitative results
-        if self.label_domain == 'kspace':
-            y_hat, y = self.evaluation_transform([y_hat, y])
-        if self.input_domain == 'kspace':
-            x = self.evaluation_transform([x])[0]
+        y_hat, y = self.evaluation_transform([y_hat, y], self.label_domain)
+        x = self.evaluation_transform([x], self.input_domain)[0]
         # After iFFT there are imprecisions which result in numbers with
         # fractional parts. Use round() and convert to integer {0,1}.
         y = y.round().int()
@@ -274,27 +270,41 @@ class LitModel(pl.LightningModule):
         )
 
     def evaluation_transform(
-        self, variables: List[torch.Tensor]
+        self, variables: List[torch.Tensor], domain: str
     ) -> List[torch.Tensor]:
         """Transform variables into pixel domain for evaluation.
 
         Args:
             variables: List of input or output variables.
+            domain: The current domain of the given variables.
 
         Returns:
             Variables in pixel domain.
         """
-        vec2complex = Vec2Complex()
-        inv_kspace = InverseKSpace(exclude_label=(self.label_domain == 'pixel'))
-        transformed_variables = []
-        for variable in variables:
-            variable = [
-                inv_kspace(vec2complex(b))
-                for b in torch.unbind(variable, dim=0)
-            ]
-            variable = torch.stack(variable, dim=0)
-            transformed_variables.append(variable)
-        return transformed_variables
+        if domain == 'kspace':
+            vec2complex = Vec2Complex()
+            inv_kspace = InverseKSpace(
+                exclude_label=(self.label_domain == 'pixel')
+            )
+            transformed_variables = []
+            for variable in variables:
+                variable = [
+                    inv_kspace(vec2complex(b))
+                    for b in torch.unbind(variable, dim=0)
+                ]
+                variable = torch.stack(variable, dim=0)
+                transformed_variables.append(variable)
+            return transformed_variables
+        if domain == 'wavelet':
+            dwt = DWT(exclude_label=(self.label_domain == 'pixel'))
+            transformed_variables = []
+            for variable in variables:
+                variable = [dwt(b) for b in torch.unbind(variable, dim=0)]
+                variable = torch.stack(variable, dim=0)
+                transformed_variables.append(variable)
+            return transformed_variables
+        # If variables are not in kspace or wavelet domain, no need to transform
+        return variables
 
     def log_per_class_metrics(self, prefix: str, metrics: List):
         """Logs each class metric value separately.
