@@ -176,7 +176,10 @@ class DataModuleBase(pl.LightningDataModule):
                 )
             else:
                 domain_transform = torchio.Compose(
-                    [DWT(exclude_label=(self.label_domain == 'pixel'))]
+                    [
+                        DWT(exclude_label=(self.label_domain == 'pixel')),
+                        Unsqueeze(position=1),
+                    ]
                 )
             self.train_transform = torchio.Compose(
                 [

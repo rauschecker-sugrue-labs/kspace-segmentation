@@ -230,15 +230,13 @@ class Vec2Complex(NDTransform, torchio.SpatialTransform):
 
 
 class DWT(DomainTransform):
-    def __init__(self, exclude_label: bool, data_shape: Tuple[int]) -> None:
+    def __init__(self, exclude_label: bool) -> None:
         """Initialization of the discrete wavelet transformation.
 
         Args:
             exclude_label: Whether to exlcude the label for the transformation.
         """
         super().__init__(exclude_label)
-        self.DWT2_op = lop.dwt2D(data_shape[:-2], wavelet='haar', level=5)
-        self.WT2_op = lop.jit(self.DWT2_op)
 
     def apply_transform(self, subject: torchio.Subject) -> torchio.Subject:
         """Applies the 2D Haar discrete wavelet transform on the given subject.
@@ -250,18 +248,19 @@ class DWT(DomainTransform):
         Returns:
             Transformed subject.
         """
+        # Transformation is done sagitally so only the last two digits of shape
+        data_shape = self.get_images(subject)[0].shape[-2:]
+        self.DWT2_op = lop.dwt2D(data_shape, wavelet='haar', level=5)
+        self.WT2_op = lop.jit(self.DWT2_op)
+
         for image in self.get_images(subject):
-            # Swap axes to iterate over the last axis
-            image_swapped = np.swapaxes(image, -1, 0)
-
             # Apply the 2D operator along the first axis
-            coefs_swapped = np.array(
-                [self.DWT2_op.times(slice_) for slice_ in image_swapped]
-            )
-
-            # Swap axes back to the original order
-            coefs = np.swapaxes(coefs_swapped, 0, -1)
-            image.set_data(coefs)
+            transformed = np.empty_like(image)
+            for i in range(image.shape[1]):
+                transformed[0, i, :, :] = self.DWT2_op.times(
+                    image.data[0, i, :, :].cpu().numpy()
+                )
+            image.set_data(torch.from_numpy(transformed))
         return subject
 
     @staticmethod
