@@ -1,12 +1,14 @@
+import numpy as np
 import torch
 import torchio
 
+from cr.sparse import lop
 from einops import rearrange
 from typing import List
 
 from kseg.data.custom_torchio import NDTransform
 
-from typing import List
+from typing import List, Tuple
 
 
 class DomainTransform(NDTransform):
@@ -225,6 +227,60 @@ class Vec2Complex(NDTransform, torchio.SpatialTransform):
             Complex2Vec transformation.
         """
         return Complex2Vec()
+
+
+class DWT(DomainTransform):
+    def __init__(self, exclude_label: bool, data_shape: Tuple[int]) -> None:
+        """Initialization of the discrete wavelet transformation.
+
+        Args:
+            exclude_label: Whether to exlcude the label for the transformation.
+        """
+        super().__init__(exclude_label)
+        self.DWT2_op = lop.dwt2D(data_shape[:-2], wavelet='haar', level=5)
+        self.WT2_op = lop.jit(self.DWT2_op)
+
+    def apply_transform(self, subject: torchio.Subject) -> torchio.Subject:
+        """Applies the 2D Haar discrete wavelet transform on the given subject.
+
+        Args:
+            subject: Subject to be transformed. The data must be in RAS+
+                orientation (c, x, y, z).
+
+        Returns:
+            Transformed subject.
+        """
+        for image in self.get_images(subject):
+            # Swap axes to iterate over the last axis
+            image_swapped = np.swapaxes(image, -1, 0)
+
+            # Apply the 2D operator along the first axis
+            coefs_swapped = np.array(
+                [self.DWT2_op.times(slice_) for slice_ in image_swapped]
+            )
+
+            # Swap axes back to the original order
+            coefs = np.swapaxes(coefs_swapped, 0, -1)
+            image.set_data(coefs)
+        return subject
+
+    @staticmethod
+    def is_invertible() -> bool:
+        """Shows whether the discrete wavelet transformation is invertible.
+
+        Returns:
+            Whether the discrete wavelet transformation is invertible.
+        """
+        return True
+
+    def inverse(self):
+        """Gives the inverse transformation for the discrete wavelet
+        transformation.
+
+        Returns:
+            Inverse 2D Haar discrete wavelet transformation.
+        """
+        return DWT()
 
 
 class Unsqueeze(NDTransform, torchio.SpatialTransform):
