@@ -251,15 +251,16 @@ class DWT(DomainTransform):
         # Transformation is done sagitally so only the last two digits of shape
         data_shape = self.get_images(subject)[0].shape[-2:]
         self.DWT2_op = lop.dwt2D(data_shape, wavelet='haar', level=5)
-        self.WT2_op = lop.jit(self.DWT2_op)
+        self.DWT2_op = lop.jit(self.DWT2_op)
 
         for image in self.get_images(subject):
-            # Apply the 2D operator along the first axis
-            transformed = np.empty_like(image)
-            for i in range(image.shape[1]):
-                transformed[0, i, :, :] = self.DWT2_op.times(
-                    image.data[0, i, :, :].cpu().numpy()
-                )
+            # Apply the 2D DWT operator for each sagitally slice
+            transformed = np.zeros_like(image)
+            for c in range(image.shape[0]):
+                for x in range(image.shape[2]):
+                    transformed[c, 0, x, :, :] = self.DWT2_op.times(
+                        image.data[c, 0, x, :, :].cpu().numpy()
+                    )
             image.set_data(torch.from_numpy(transformed))
         return subject
 

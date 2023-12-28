@@ -290,7 +290,7 @@ class LitModel(pl.LightningModule):
             for variable in variables:
                 variable = [
                     inv_kspace(vec2complex(b))
-                    for b in torch.unbind(variable, dim=0)
+                    for b in torch.unbind(variable.cpu(), dim=0)
                 ]
                 variable = torch.stack(variable, dim=0)
                 transformed_variables.append(variable)
@@ -299,7 +299,7 @@ class LitModel(pl.LightningModule):
             dwt = DWT(exclude_label=(self.label_domain == 'pixel'))
             transformed_variables = []
             for variable in variables:
-                variable = [dwt(b) for b in torch.unbind(variable, dim=0)]
+                variable = [dwt(b) for b in torch.unbind(variable.cpu(), dim=0)]
                 variable = torch.stack(variable, dim=0)
                 transformed_variables.append(variable)
             return transformed_variables

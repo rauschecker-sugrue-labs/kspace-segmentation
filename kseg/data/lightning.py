@@ -177,8 +177,8 @@ class DataModuleBase(pl.LightningDataModule):
             else:
                 domain_transform = torchio.Compose(
                     [
-                        DWT(exclude_label=(self.label_domain == 'pixel')),
                         Unsqueeze(position=1),
+                        DWT(exclude_label=(self.label_domain == 'pixel')),
                     ]
                 )
             self.train_transform = torchio.Compose(
@@ -238,7 +238,8 @@ class DataModuleBase(pl.LightningDataModule):
             Dataloader for training phase.
         """
         return torch.utils.data.DataLoader(
-            self.train_set, self.batch_size, num_workers=32
+            self.train_set,
+            self.batch_size,  # num_workers=32
         )
 
     def val_dataloader(self) -> torch.utils.data.DataLoader:
@@ -248,7 +249,8 @@ class DataModuleBase(pl.LightningDataModule):
             Dataloader for validation phase.
         """
         return torch.utils.data.DataLoader(
-            self.val_set, self.batch_size, num_workers=10
+            self.val_set,
+            self.batch_size,  # num_workers=10
         )
 
     def test_dataloader(self) -> torch.utils.data.DataLoader:
@@ -258,7 +260,8 @@ class DataModuleBase(pl.LightningDataModule):
             Dataloader for testing phase.
         """
         return torch.utils.data.DataLoader(
-            self.test_set, self.batch_size, num_workers=10
+            self.test_set,
+            self.batch_size,  # num_workers=10
         )
 
     def save_preprocessed_data(self, path: Union[str, Path]) -> None:
