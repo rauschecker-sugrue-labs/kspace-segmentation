@@ -243,7 +243,7 @@ class DWT(DomainTransform):
 
         Args:
             subject: Subject to be transformed. The data must be in RAS+
-                orientation (c, x, y, z).
+                orientation (c, v, x, y, z).
 
         Returns:
             Transformed subject.
@@ -279,6 +279,61 @@ class DWT(DomainTransform):
 
         Returns:
             Inverse 2D Haar discrete wavelet transformation.
+        """
+        return InverseDWT()
+
+
+class InverseDWT(DomainTransform):
+    def __init__(self, exclude_label: bool) -> None:
+        """Initialization of the inverse discrete wavelet transformation.
+
+        Args:
+            exclude_label: Whether to exlcude the label for the transformation.
+        """
+        super().__init__(exclude_label)
+
+    def apply_transform(self, subject: torchio.Subject) -> torchio.Subject:
+        """Applies the inverse 2D Haar discrete wavelet transform on the given
+        subject.
+
+        Args:
+            subject: Subject to be transformed. The data must be in RAS+
+                orientation (c, v, x, y, z).
+
+        Returns:
+            Transformed subject.
+        """
+        # Transformation is done sagitally so only the last two digits of shape
+        data_shape = self.get_images(subject)[0].shape[-2:]
+        self.DWT2_op = lop.dwt2D(data_shape, wavelet='haar', level=5)
+        self.DWT2_op = lop.jit(self.DWT2_op)
+
+        for image in self.get_images(subject):
+            # Apply the 2D DWT operator for each sagitally slice
+            transformed = np.zeros_like(image)
+            for c in range(image.shape[0]):
+                for x in range(image.shape[2]):
+                    transformed[c, 0, x, :, :] = self.DWT2_op.trans(
+                        image.data[c, 0, x, :, :].cpu().numpy()
+                    )
+            image.set_data(torch.from_numpy(transformed))
+        return subject
+
+    @staticmethod
+    def is_invertible() -> bool:
+        """Shows whether the inverse discrete wavelet transformation is
+        invertible.
+
+        Returns:
+            Whether the discrete wavelet transformation is invertible.
+        """
+        return True
+
+    def inverse(self):
+        """Gives the inverse of the inverse discrete wavelet transformation.
+
+        Returns:
+            2D Haar discrete wavelet transformation.
         """
         return DWT()
 

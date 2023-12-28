@@ -14,7 +14,7 @@ from torch.optim import lr_scheduler, Optimizer
 from torchmetrics import Specificity, Recall
 
 
-from kseg.data.transforms import InverseKSpace, Vec2Complex, DWT
+from kseg.data.transforms import InverseKSpace, Vec2Complex, InverseDWT
 from kseg.model.modules import DiceScore
 from kseg.model.modules import MLP, PerceiverIO, SkipMLP, ResMLP, Transformer
 
@@ -296,10 +296,14 @@ class LitModel(pl.LightningModule):
                 transformed_variables.append(variable)
             return transformed_variables
         if domain == 'wavelet':
-            dwt = DWT(exclude_label=(self.label_domain == 'pixel'))
+            inverse_dwt = InverseDWT(
+                exclude_label=(self.label_domain == 'pixel')
+            )
             transformed_variables = []
             for variable in variables:
-                variable = [dwt(b) for b in torch.unbind(variable.cpu(), dim=0)]
+                variable = [
+                    inverse_dwt(b) for b in torch.unbind(variable.cpu(), dim=0)
+                ]
                 variable = torch.stack(variable, dim=0)
                 transformed_variables.append(variable)
             return transformed_variables
