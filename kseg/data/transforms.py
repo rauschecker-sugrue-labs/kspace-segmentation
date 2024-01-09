@@ -8,7 +8,7 @@ from typing import List
 
 from kseg.data.custom_torchio import NDTransform
 
-from typing import List, Tuple
+from typing import List
 
 
 class DomainTransform(NDTransform):
@@ -255,7 +255,7 @@ class DWT(DomainTransform):
 
         for image in self.get_images(subject):
             # Apply the 2D DWT operator for each sagitally slice
-            transformed = np.zeros_like(image)
+            transformed = np.zeros_like(image, dtype=np.float32)
             for c in range(image.shape[0]):
                 for x in range(image.shape[2]):
                     transformed[c, 0, x, :, :] = self.DWT2_op.times(
