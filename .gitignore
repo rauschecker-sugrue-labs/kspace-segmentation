@@ -164,9 +164,14 @@ pytorch_logs
 # Notebooks
 notebooks/
 
-# SLURM 
+# SLURM and SGE
 slurm.sh
 slurm_logs/
+sge.sh*
 
 # Tensorboard
 .tensorboard-info/
+
+# Datasets
+datasets/*
+!datasets/DATASETS.md

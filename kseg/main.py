@@ -48,6 +48,9 @@ def main():
     '--output_dir', '--out', default='.', type=click.Path(exists=True)
 )
 @click.option(
+    '--datasets-path', default='./datasets', type=click.Path(exists=True)
+)
+@click.option(
     '--config-path', default='./config.yml', type=click.Path(exists=True)
 )
 @click.option('--resume', is_flag=True, default=False)
@@ -65,6 +68,7 @@ def train(
     num_gpus: int = 1,
     skip_checkpoints: bool = False,
     output_dir: str = '.',
+    datasets_path: str = './datasets/',
     config_path: str = './config.yml',
     resume: bool = False,
     tuning: bool = False,
@@ -87,6 +91,8 @@ def train(
         skip_checkpoints: Whether to skip creating model checkpoints or not.
             Defaults to False.
         output_dir: Directory of results and checkpoints. Defaults to '.'.
+        datasets_path: Path to the datasets directory.
+            Defaults to './datasets/'.
         config_path: Path to the config file. Defaults to './config.yml'.
         resume: Whether the training shall be resumed or not.
             Defaults to False.
@@ -103,10 +109,6 @@ def train(
     if resume:
         raise NotImplementedError('Resume currently not supported.')
 
-    # Get config dict from YAML file without class substitutions
-    config_handler = ConfigHandler(config_path)
-    unparsed_config = config_handler.get_unparsed_config()
-
     data_modules = {
         'Knee': KneeDataModule,
         'CNSLymphomaSS': CNSLymphomaSSDataModule,
@@ -122,7 +124,7 @@ def train(
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=unparsed_config['datasets'][data_name],
+            datasets_dir=datasets_path,
         )
     else:
         raise ValueError(f'Data module for {data_name} is not defined.')
@@ -130,19 +132,18 @@ def train(
     data_module.prepare_data()
     data_module.setup()
 
-    # Get config dict with class substitutions
-    parsed_config = config_handler.parse_config(
-        unparsed_config, data_module.class_weights
-    )
-
-    # Reduce config to only trial-relevant parts
-    config = config_handler.get_trial_specific_config(
-        parsed_config,
+    # Get config dict from YAML file
+    config_handler = ConfigHandler(config_path)
+    config = config_handler.get_config(
         model_name,
-        data_module,
         epochs,
         learning_rate,
         step_size,
+        data_module.input_shape,
+        data_module.label_shape,
+        data_module.input_domain,
+        data_module.label_domain,
+        data_module.class_weights,
         resume,
         tuning,
     )
@@ -159,6 +160,10 @@ def train(
 
     # Display either hparams or standard parameter in CLIReporter
     if tuning:
+        # Replace grid search array by ray grid search object
+        for key, value in config.items():
+            if isinstance(value, list):
+                config[key] = tune.grid_search(value)
         parameter_columns = [
             k
             for k, v in config.items()

@@ -288,7 +288,7 @@ class UCSF51LesionDataModule(DataModuleBase):
         batch_size: int,
         input_domain: str,
         label_domain: str,
-        dataset_dir: str,
+        datasets_dir: str,
         train_val_ratio: float = 0.8,
         resampling_target_size: int = 3,
         crop_size: Tuple = (64, 64, 64),
@@ -299,7 +299,7 @@ class UCSF51LesionDataModule(DataModuleBase):
             batch_size: Batch size used for training.
             input_domain: Target domain of inputs ('kspace' or 'pixel').
             label_domain: Target domain of label ('kspace' or 'pixel').
-            dataset_dir: Path to the UCSF51Lesion dataset.
+            datasets_dir: Path to the datasets directory.
             train_val_ratio: Ratio between train dataset and val+test dataset.
                 Defaults to 0.8.
             resampling_target_size: Size to which the input shall be resampled.
@@ -311,7 +311,7 @@ class UCSF51LesionDataModule(DataModuleBase):
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=dataset_dir,
+            dataset_dir=os.path.join(os.getcwd(), datasets_dir, 'UCSF51/'),
             num_classes=2,
             train_val_ratio=train_val_ratio,
             resampling_target_size=resampling_target_size,
@@ -334,9 +334,7 @@ class UCSF51LesionDataModule(DataModuleBase):
         for image in image_files:
             accession = os.path.basename(image).split('_')[0]
             image_path = os.path.join(self.dataset_dir, f'{accession}.nii.gz')
-            seg_path = os.path.join(
-                self.dataset_dir, f'{accession}_seg.nii.gz'
-            )
+            seg_path = os.path.join(self.dataset_dir, f'{accession}_seg.nii.gz')
 
             subject = torchio.Subject(
                 input=NDScalarImage(image_path),
@@ -351,7 +349,7 @@ class CNSLymphomaSSDataModule(DataModuleBase):
         batch_size: int,
         input_domain: str,
         label_domain: str,
-        dataset_dir: str,
+        datasets_dir: str,
         train_val_ratio: float = 0.8,
         resampling_target_size: int = 3,
         crop_size: Tuple = (64, 64, 64),
@@ -362,7 +360,7 @@ class CNSLymphomaSSDataModule(DataModuleBase):
             batch_size: Batch size used for training.
             input_domain: Target domain of inputs ('kspace' or 'pixel').
             label_domain: Target domain of labels ('kspace' or 'pixel').
-            dataset_dir: Path to the CNSLymphomaSS dataset.
+            datasets_dir: Path to the datasets directory.
             train_val_ratio: Ratio between train dataset and val+test dataset.
                 Defaults to 0.8.
             resampling_target_size: Size to which the input shall be resampled.
@@ -374,7 +372,9 @@ class CNSLymphomaSSDataModule(DataModuleBase):
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=dataset_dir,
+            dataset_dir=os.path.join(
+                os.getcwd(), datasets_dir, 'CNS_Lymphoma/'
+            ),
             num_classes=2,
             train_val_ratio=train_val_ratio,
             resampling_target_size=resampling_target_size,
@@ -407,9 +407,7 @@ class CNSLymphomaSSDataModule(DataModuleBase):
                 current_subjects = []
 
             image_path = (
-                Path(self.dataset_dir)
-                / 'imagesTr'
-                / f'{accession}_0000.nii.gz'
+                Path(self.dataset_dir) / 'imagesTr' / f'{accession}_0000.nii.gz'
             )
             seg_path = (
                 Path(self.dataset_dir) / 'labelsTr' / f'{accession}.nii.gz'
@@ -431,7 +429,7 @@ class CNSLymphomaTissueDataModule(DataModuleBase):
         batch_size: int,
         input_domain: str,
         label_domain: str,
-        dataset_dir: str,
+        datasets_dir: str,
         train_val_ratio: float = 0.8,
         resampling_target_size: int = 3,
         crop_size: Tuple = (64, 64, 64),
@@ -441,7 +439,7 @@ class CNSLymphomaTissueDataModule(DataModuleBase):
             batch_size: Batch size used for training.
             input_domain: Target domain of inputs ('kspace' or 'pixel').
             label_domain: Target domain of labels ('kspace' or 'pixel').
-            dataset_dir: Path to the CNSLymphomaTissue dataset.
+            datasets_dir: Path to the datasets directory.
             train_val_ratio: Ratio between train dataset and val+test dataset.
                 Defaults to 0.8.
             resampling_target_size: Size to which the input shall be resampled.
@@ -453,7 +451,9 @@ class CNSLymphomaTissueDataModule(DataModuleBase):
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=dataset_dir,
+            dataset_dir=os.path.join(
+                os.getcwd(), datasets_dir, 'CNS_Lymphoma/'
+            ),
             num_classes=7,
             train_val_ratio=train_val_ratio,
             resampling_target_size=resampling_target_size,
@@ -492,7 +492,7 @@ class KneeDataModule(DataModuleBase):
         batch_size: int,
         input_domain: str,
         label_domain: str,
-        dataset_dir: str,
+        datasets_dir: str,
         train_val_ratio: float = 0.8,
         resampling_target_size: int = 3,
         crop_size: Tuple = (64, 64, 64),
@@ -502,7 +502,7 @@ class KneeDataModule(DataModuleBase):
             batch_size: Batch size used for training.
             input_domain: Target domain of inputs ('kspace' or 'pixel').
             label_domain: Target domain of labels ('kspace' or 'pixel').
-            dataset_dir: Path to the Knee dataset.
+            datasets_dir: Path to the datasets directory.
             train_val_ratio: Ratio between train dataset and val+test dataset.
                 Defaults to 0.8.
             resampling_target_size: Size to which the input shall be resampled.
@@ -514,7 +514,7 @@ class KneeDataModule(DataModuleBase):
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=dataset_dir,
+            dataset_dir=os.path.join(os.getcwd(), datasets_dir, 'Knee/'),
             num_classes=7,
             train_val_ratio=train_val_ratio,
             resampling_target_size=resampling_target_size,
@@ -530,9 +530,7 @@ class KneeDataModule(DataModuleBase):
         for image in glob.glob(os.path.join(self.dataset_dir, '*_seg.nii.gz')):
             accession = os.path.basename(image).split('_')[0]
             image_path = os.path.join(self.dataset_dir, f'{accession}.nii.gz')
-            seg_path = os.path.join(
-                self.dataset_dir, f'{accession}_seg.nii.gz'
-            )
+            seg_path = os.path.join(self.dataset_dir, f'{accession}_seg.nii.gz')
 
             subject = torchio.Subject(
                 input=NDScalarImage(image_path),
@@ -563,7 +561,7 @@ class UPennGBMSSDataModule(DataModuleBase):
         batch_size: int,
         input_domain: str,
         label_domain: str,
-        dataset_dir: str,
+        datasets_dir: str,
         train_val_ratio: float = 0.8,
         resampling_target_size: int = 3,
         crop_size: Tuple = (64, 64, 64),
@@ -574,7 +572,7 @@ class UPennGBMSSDataModule(DataModuleBase):
             batch_size: Batch size used for training.
             input_domain: Target domain of inputs ('kspace' or 'pixel').
             label_domain: Target domain of label ('kspace' or 'pixel').
-            dataset_dir: Path to the UPennGBMSS dataset.
+            datasets_dir: Path to the datasets directory.
             train_val_ratio: Ratio between train dataset and val+test dataset.
                 Defaults to 0.8.
             resampling_target_size: Size to which the input shall be resampled.
@@ -586,7 +584,7 @@ class UPennGBMSSDataModule(DataModuleBase):
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=dataset_dir,
+            dataset_dir=os.path.join(os.getcwd(), datasets_dir, 'UPENN_GBM/'),
             num_classes=2,
             train_val_ratio=train_val_ratio,
             resampling_target_size=resampling_target_size,
@@ -664,7 +662,7 @@ class UPennGBMTumorDataModule(DataModuleBase):
         batch_size: int,
         input_domain: str,
         label_domain: str,
-        dataset_dir: str,
+        datasets_dir: str,
         train_val_ratio: float = 0.8,
         resampling_target_size: int = 3,
         crop_size: Tuple = (64, 64, 64),
@@ -675,7 +673,7 @@ class UPennGBMTumorDataModule(DataModuleBase):
             batch_size: Batch size used for training.
             input_domain: Target domain of inputs ('kspace' or 'pixel').
             label_domain: Target domain of label ('kspace' or 'pixel').
-            dataset_dir: Path to the UPennGBMTumor dataset.
+            datasets_dir: Path to the datasets directory.
             train_val_ratio: Ratio between train dataset and val+test dataset.
                 Defaults to 0.8.
             resampling_target_size: Size to which the input shall be resampled.
@@ -687,7 +685,7 @@ class UPennGBMTumorDataModule(DataModuleBase):
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=dataset_dir,
+            dataset_dir=os.path.join(os.getcwd(), datasets_dir, 'UPENN_GBM/'),
             num_classes=4,
             train_val_ratio=train_val_ratio,
             resampling_target_size=resampling_target_size,
@@ -720,9 +718,7 @@ class UPennGBMTumorDataModule(DataModuleBase):
                 continue
 
             # Look for the T1 image
-            t1_image_path = glob.glob(
-                os.path.join(subject_dir, '*_T1.nii.gz')
-            )[
+            t1_image_path = glob.glob(os.path.join(subject_dir, '*_T1.nii.gz'))[
                 0
             ]  # Taking the first match
             image_paths.append(t1_image_path)
@@ -779,7 +775,7 @@ class OasisTissueDataModule(DataModuleBase):
         batch_size: int,
         input_domain: str,
         label_domain: str,
-        dataset_dir: str,
+        datasets_dir: str,
         train_val_ratio: float = 0.8,
         resampling_target_size: int = 3,
         crop_size: Tuple = (64, 64, 64),
@@ -790,7 +786,7 @@ class OasisTissueDataModule(DataModuleBase):
             batch_size: Batch size used for training.
             input_domain: Target domain of inputs ('kspace' or 'pixel').
             label_domain: Target domain of label ('kspace' or 'pixel').
-            dataset_dir: Path to the OasisTissue dataset.
+            datasets_dir: Path to the datasets directory.
             train_val_ratio: Ratio between train dataset and val+test dataset.
                 Defaults to 0.8.
             resampling_target_size: Size to which the input shall be resampled.
@@ -802,7 +798,7 @@ class OasisTissueDataModule(DataModuleBase):
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=dataset_dir,
+            dataset_dir=os.path.join(os.getcwd(), datasets_dir, 'OASIS/'),
             num_classes=7,
             train_val_ratio=train_val_ratio,
             resampling_target_size=resampling_target_size,
@@ -822,6 +818,7 @@ class OasisTissueDataModule(DataModuleBase):
     def prepare_data(self) -> None:
         """Creates the subject list based on the Oasis dataset dir."""
         self.subject_list = []
+
         # Iterate over each directory inside the root directory
         for subject_dir in os.listdir(self.dataset_dir):
             if subject_dir.startswith('OAS1_') and os.path.isdir(
@@ -834,9 +831,7 @@ class OasisTissueDataModule(DataModuleBase):
 
                 # Check if both files exist in the mri directory
                 aseg_path = os.path.join(mri_dir_path, 'aseg.nii.gz')
-                brain_mask_path = os.path.join(
-                    mri_dir_path, 'brainmask.nii.gz'
-                )
+                brain_mask_path = os.path.join(mri_dir_path, 'brainmask.nii.gz')
 
                 if os.path.exists(aseg_path) and os.path.exists(
                     brain_mask_path
