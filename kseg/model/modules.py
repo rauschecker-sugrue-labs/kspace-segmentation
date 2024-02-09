@@ -37,9 +37,7 @@ class PreNorm(nn.Module):
 class MLP_Block(nn.Module):
     """Building block for MLP-based models."""
 
-    def __init__(
-        self, hidden_size: int, activation: nn.Module, depth: int
-    ) -> None:
+    def __init__(self, hidden_size: int, activation: nn.Module, depth: int) -> None:
         """Initialization of the MLP block.
 
         Args:
@@ -216,9 +214,7 @@ class ResMLP_Block(nn.Module):
         self.layerscale_1 = nn.Parameter(
             layerscale_init * torch.ones((latent_dim))
         )  # LayerScale parameters
-        self.layerscale_2 = nn.Parameter(
-            layerscale_init * torch.ones((latent_dim))
-        )
+        self.layerscale_2 = nn.Parameter(layerscale_init * torch.ones((latent_dim)))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Propagates the input through the ResMLP block.
@@ -324,9 +320,7 @@ class DomainInputAdapter(InputAdapter):
     x-slice dimension acts as input channels.
     """
 
-    def __init__(
-        self, input_shape: Tuple[int], num_frequency_bands: int
-    ) -> None:
+    def __init__(self, input_shape: Tuple[int], num_frequency_bands: int) -> None:
         """Initialization of the domain input adapter for the PerceiverIO.
 
         Args:
@@ -377,7 +371,7 @@ class DomainInputAdapter(InputAdapter):
 
         # b (batch), c (class), v (real/imag-part), x, y, z
         x = rearrange(x, 'b c v x y z -> b (c v z y) x')
-        if self.position_encoding == None:
+        if self.position_encoding is None:
             return x
 
         x_enc = self.position_encoding(b)
@@ -387,9 +381,7 @@ class DomainInputAdapter(InputAdapter):
 class SegmentationOutputAdapter(OutputAdapter):
     """Transforms generic decoder cross-attention output to segmentation map."""
 
-    def __init__(
-        self, output_len: int, num_output_query_channels: int
-    ) -> None:
+    def __init__(self, output_len: int, num_output_query_channels: int) -> None:
         """Initialization of the segmentation output adapter.
 
         Args:
@@ -462,9 +454,7 @@ class PerceiverIO(nn.Module):
             num_query_channels=output_query_channels,
             init_scale=0.02,  # scale for Gaussian query initialization
         )
-        output_adapter = SegmentationOutputAdapter(
-            output_len, output_query_channels
-        )
+        output_adapter = SegmentationOutputAdapter(output_len, output_query_channels)
         modules = (
             PerceiverEncoder(
                 input_adapter=input_adapter,
@@ -541,9 +531,7 @@ class Transformer(nn.Module):
         input_len = int(np.prod([*input_shape[:2], *input_shape[3:]]))
         output_len = int(np.prod([*output_shape[:2], *output_shape[3:]]))
         hidden_size = int(input_len * hidden_factor)
-        self.input_adapter = DomainInputAdapter(
-            input_shape, num_frequency_bands
-        )
+        self.input_adapter = DomainInputAdapter(input_shape, num_frequency_bands)
 
         in_linear = nn.Linear(input_len, hidden_size)
         encoder_layers = nn.TransformerEncoderLayer(
@@ -552,9 +540,7 @@ class Transformer(nn.Module):
         transformer_encoder = nn.TransformerEncoder(encoder_layers, depth)
         out_linear = nn.Linear(hidden_size, output_len)
 
-        self.layers = nn.ModuleList(
-            [in_linear, transformer_encoder, out_linear]
-        )
+        self.layers = nn.ModuleList([in_linear, transformer_encoder, out_linear])
         self.layers = nn.Sequential(*self.layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -611,9 +597,7 @@ class DiceScore(nn.Module):
         union = torch.sum(y_pred + y_true, dim=(0, 2, 3, 4, 5))
 
         # Calculate Dice score for each class
-        dice_scores = (2.0 * intersection + self.smooth) / (
-            union + self.smooth
-        )
+        dice_scores = (2.0 * intersection + self.smooth) / (union + self.smooth)
 
         # Return average Dice score and per class Dice score
         return dice_scores.mean(), dice_scores

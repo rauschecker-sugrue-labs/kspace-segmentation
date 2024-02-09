@@ -19,7 +19,7 @@ dependencies = [
     'einops',
     'opencv-python',
     'pandas',
-    'perceiver-io',
+    #'perceiver-io',
     'pyarrow',
     'pytorch_lightning == 2.0.5',
     'ray == 2.5.1',
@@ -28,6 +28,9 @@ dependencies = [
     'torchmetrics == 0.9.3',
     'torchvision == 0.15.2'
 ]
+
+[project.optional-dependencies]
+docs = ["sphinx", "furo"]
 
 [tool.setuptools]
 py-modules = ["kseg"]

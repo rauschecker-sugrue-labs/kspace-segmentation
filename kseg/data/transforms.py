@@ -1,12 +1,12 @@
+from typing import List
+
 import torch
 import torchio
-
-from einops import rearrange
-from typing import List
+from einops import pack, parse_shape, rearrange
 
 from kseg.data.custom_torchio import NDTransform
 
-from typing import List
+
 
 
 class DomainTransform(NDTransform):
@@ -69,7 +69,7 @@ class KSpace(DomainTransform, torchio.FourierTransform):
         Returns:
             Inverse KSpace transformation.
         """
-        return InverseKSpace()
+        return InverseKSpace(exclude_label=self.exclude_label)
 
 
 class InverseKSpace(DomainTransform, torchio.FourierTransform):
@@ -125,7 +125,7 @@ class InverseKSpace(DomainTransform, torchio.FourierTransform):
         Returns:
             KSpace transformation.
         """
-        return KSpace()
+        return KSpace(exclude_label=self.exclude_label)
 
 
 class Complex2Vec(NDTransform, torchio.SpatialTransform):
@@ -142,15 +142,14 @@ class Complex2Vec(NDTransform, torchio.SpatialTransform):
         Returns:
             Subject with at a new dimension for storing the real and imaginary
                 part of the image. In case there are not complex numbers, this
-                dimension has a lnegth of 1.
+                dimension has a length of 1.
         """
         for image in self.get_images(subject):
             if 'complex' in str(image.data.dtype):
-                image.set_data(
-                    torch.stack([image.data.real, image.data.imag], dim=1)
-                )
+                image.set_data(pack([image.data.real, image.data.imag], 'c * x y z')[0])
             else:
-                image.set_data(torch.unsqueeze(image.data, dim=1))
+                image.set_data(rearrange(image.data, 'c x y z -> c 1 x y z'))
+
         return subject
 
     @staticmethod
@@ -205,9 +204,47 @@ class Vec2Complex(NDTransform, torchio.SpatialTransform):
         """
         # Reorder the axis since view_as_complex expects the last dimension
         # represents the real and imaginary components of complex numbers.
-        data = rearrange(data, 'c v x y z -> c x y z v').contiguous()
+        shape = parse_shape(data, '_ _ _ y _')
 
-        return torch.unsqueeze(torch.view_as_complex(data), dim=1)
+        real = pack(
+            [
+                data[:, :, :, 0:1, 0:1],
+                data[:, :, :, 1 : shape['y'] // 2, 0:1],
+                data[:, :, :, (shape['y'] + 1) // 2 : shape['y'] // 2 + 1, 0:1],
+                torch.flip(data[:, :, :, 1 : shape['y'] // 2, 0:1], dims=(-1,)),
+            ],
+            'c v x * z',
+        )[0]
+
+        imag = torch.zeros_like(real)
+        imag[:, :, :, 1 : shape['y'] // 2, 0:1] = data[
+            :, :, :, shape['y'] // 2 + 1 :, 0:1
+        ]
+        imag[:, :, :, shape['y'] // 2 + 1 :, 0:1] = -torch.flip(
+            data[:, :, :, shape['y'] // 2 + 1 :, 0:1], dims=(-1,)
+        )
+
+        cols_decompressed = rearrange(
+            torch.view_as_complex(pack([real, imag], 'c z x y *')[0]),
+            'c z x y -> c x y z',
+        )
+
+        cols_rest = torch.complex(real=data[:, 0, :, :, 1:], imag=data[:, 1, :, :, 1:])
+
+        print(data.shape, cols_rest.shape, cols_decompressed.shape)
+        data = rearrange(
+            pack(
+                [
+                    cols_decompressed[:, :, :, 0:1],
+                    cols_rest,
+                    cols_decompressed[:, :, :, 1:0],
+                ],
+                'c x y *',
+            )[0],
+            'c x y z -> c 1 x y z',
+        )
+
+        return data
 
     @staticmethod
     def is_invertible() -> bool:
@@ -309,3 +346,145 @@ class Squeeze(NDTransform, torchio.SpatialTransform):
             Unsqueeze transformation.
         """
         return Unsqueeze()
+
+
+class Compress(NDTransform, torchio.SpatialTransform):
+    def __init__(self) -> None:
+        """Initialization for compression transformation."""
+        super().__init__()
+
+    def apply_transform(self, subject: torchio.Subject) -> torchio.Subject:
+        """Performs lossless compression on the vecotrized 2D rfft.
+        Apply this transform after :class:`Complex2Vec` which itself
+        has been applied after py:class:: KSpace.
+
+        If the original image has size (1, 1, 64, 64, 64), after applying
+        :class:`KSpace`, we get a (1, 1, 64, 64, 33) complex tensor, and
+        after applying :class:`Complex2Vec`, we get a (1, 2, 64, 64, 33)
+        real tensor. The dimension of this tensor is larger than the original
+        image. However, there is some redundancy here. The Compress transform
+        applies a lossless compression using conjugate symmetries present in
+        the first and last columns of the tensor to reduce its dimensions to
+        (1, 2, 64, 64, 32) which is equivalent to the original image.
+
+        Args:
+            subject: Subject which vectorized KSpace data.
+
+        Returns:
+            Subject with compressed data.
+        """
+        for image in self.get_images(subject):
+            data = image.data
+            shape = parse_shape(data, '_ _ _ y z')
+            real = pack(
+                [
+                    data[:, 0, :, : shape['y'] // 2 + 1, 0:1],
+                    data[:, 1, :, 1 : (shape['y'] + 1) // 2, 0:1],
+                ],
+                'b x * z',
+            )[0]
+            imag = pack(
+                [
+                    data[:, 0, :, : shape['y'] // 2 + 1, shape['z'] - 1 : shape['z']],
+                    data[
+                        :, 1, :, 1 : (shape['y'] + 1) // 2, shape['z'] - 1 : shape['z']
+                    ],
+                ],
+                'b x * z',
+            )[0]
+
+            compressed_col = rearrange([real, imag], 'v c x y z -> c v x y z')
+            remaining_cols = data[:, :, :, :, 1:-1]
+
+            image.set_data(pack([compressed_col, remaining_cols], 'c v x y *')[0])
+
+    @staticmethod
+    def is_invertible() -> bool:
+        """Shows whether the compress transformation is invertible.
+
+        Returns:
+            Whether the compress transformation is invertible.
+        """
+        return True
+
+    def inverse(self):
+        """Gives the inverse transformation for the compress
+            transformation.
+
+        Returns:
+            Decompress transformation.
+        """
+        return Decompress()
+
+
+class Decompress(NDTransform, torchio.SpatialTransform):
+    def __init__(self) -> None:
+        """Initialization for decompression transformation."""
+        super().__init__()
+
+    def apply_transform(self, subject: torchio.Subject) -> torchio.Subject:
+        """Performs decompression on tensor that are compressed by
+         :class:`Compress`.
+
+        Args:
+            subject: Subject compressed data.
+
+        Returns:
+            Subject with decompressed data.
+        """
+        for image in self.get_images(subject):
+            data = image.data
+            shape = parse_shape(data, '_ _ _ y _')
+
+            real = pack(
+                [
+                    data[:, :, :, 0:1, 0:1],
+                    data[:, :, :, 1 : (shape['y'] + 1) // 2, 0:1],
+                    data[:, :, :, (shape['y'] + 1) // 2 : shape['y'] // 2 + 1, 0:1],
+                    torch.flip(
+                        data[:, :, :, 1 : (shape['y'] + 1) // 2, 0:1], dims=(-1,)
+                    ),
+                ],
+                'c z x * v',
+            )[0]
+
+            imag = torch.zeros_like(real)
+            imag[:, :, :, 1 : (shape['y'] + 1) // 2, 0:1] = data[
+                :, :, :, shape['y'] // 2 + 1 :, 0:1
+            ]
+            imag[:, :, :, shape['y'] // 2 + 1 :, 0:1] = -torch.flip(
+                data[:, :, :, shape['y'] // 2 + 1 :, 0:1], dims=(-1,)
+            )
+
+            cols_decompressed = rearrange(
+                pack([real, imag], 'c z x y *')[0], 'c z x y v -> c v x y z'
+            )
+
+            data = pack(
+                [
+                    cols_decompressed[:, :, :, :, 0:1],
+                    data[:, :, :, :, 1:],
+                    cols_decompressed[:, :, :, :, 1:],
+                ],
+                'c v x y *',
+            )[0]
+
+            image.set_data(data)
+
+    @staticmethod
+    def is_invertible() -> bool:
+        """Shows whether the decompress transformation is invertible.
+
+        Returns:
+            Whether the decompress transformation is invertible.
+        """
+        return True
+
+    def inverse(self):
+        """Gives the inverse transformation for the decompress
+            transformation.
+
+        Returns:
+            Compress transformation.
+        """
+        return Compress()

@@ -44,15 +44,9 @@ def main():
 @click.option('--num-cpus', '--cpus', default=32)
 @click.option('--num_gpus', '--gpus', default=1)
 @click.option('--skip-checkpoints', '--sc', is_flag=True, default=False)
-@click.option(
-    '--output_dir', '--out', default='.', type=click.Path(exists=True)
-)
-@click.option(
-    '--datasets-path', default='./datasets', type=click.Path(exists=True)
-)
-@click.option(
-    '--config-path', default='./config.yml', type=click.Path(exists=True)
-)
+@click.option('--output_dir', '--out', default='.', type=click.Path(exists=True))
+@click.option('--datasets-path', default='./datasets', type=click.Path(exists=True))
+@click.option('--config-path', default='./config.yml', type=click.Path(exists=True))
 @click.option('--resume', is_flag=True, default=False)
 @click.option('--tuning', is_flag=True, default=False)
 def train(
@@ -154,9 +148,7 @@ def train(
     # We're using grid search only, we sample each value once
     num_samples = 1
 
-    scheduler = ASHAScheduler(
-        max_t=epochs, grace_period=100, reduction_factor=2
-    )
+    scheduler = ASHAScheduler(max_t=epochs, grace_period=100, reduction_factor=2)
 
     # Display either hparams or standard parameter in CLIReporter
     if tuning:
@@ -165,9 +157,7 @@ def train(
             if isinstance(value, list):
                 config[key] = tune.grid_search(value)
         parameter_columns = [
-            k
-            for k, v in config.items()
-            if isinstance(v, dict) and 'grid_search' in v
+            k for k, v in config.items() if isinstance(v, dict) and 'grid_search' in v
         ]
     else:
         parameter_columns = ['lr', 'criterion']
@@ -191,9 +181,7 @@ def train(
     resources_per_trial = {'cpu': num_cpus, 'gpu': num_gpus}
 
     tuner = tune.Tuner(
-        tune.with_resources(
-            train_fn_with_parameters, resources=resources_per_trial
-        ),
+        tune.with_resources(train_fn_with_parameters, resources=resources_per_trial),
         tune_config=tune.TuneConfig(
             metric='val_avg_dice',
             mode='max',
@@ -217,9 +205,7 @@ def train(
 @click.argument('checkpoint_path', type=click.Path(exists=True))
 @click.option('--batch-size', default=4)
 @click.option('--num_gpus', '--gpus', default=1)
-@click.option(
-    '--config-path', default='./config.yml', type=click.Path(exists=True)
-)
+@click.option('--config-path', default='./config.yml', type=click.Path(exists=True))
 def test(
     data_name: str,
     checkpoint_path: str,
@@ -248,7 +234,7 @@ def test(
         idx = checkpoint_path_parts.index('pytorch_logs')
         train_worker_path = '/'.join(checkpoint_path_parts[: idx + 2]) + '/'
     except ValueError:
-        raise ValueError(f'Given checkpoint path is invalid.')
+        raise ValueError('Given checkpoint path is invalid.')
 
     # Load model and weights from checkpoint and set model to eval mode
     model = LitModel.load_from_checkpoint(checkpoint_path)
