@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 from kseg.data.custom_torchio import NDScalarImage, NDLabelMap
-from kseg.data.transforms import KSpace, Complex2Vec, Unsqueeze
+from kseg.data.transforms import KSpace, Complex2Vec, Unsqueeze, Compress
 
 
 class DataModuleBase(pl.LightningDataModule):
@@ -64,9 +64,9 @@ class DataModuleBase(pl.LightningDataModule):
                 2,
                 self.crop_size[0],
                 self.crop_size[1],
-                self.crop_size[2] // 2 + 1,
+                self.crop_size[2] // 2,
             )
-        return (1, 1, self.crop_size[0], self.crop_size[1], self.crop_size[2])
+        return 1, 1, self.crop_size[0], self.crop_size[1], self.crop_size[2]
 
     @property
     def label_shape(self) -> Tuple:
@@ -170,6 +170,7 @@ class DataModuleBase(pl.LightningDataModule):
                         exclude_label=(self.label_domain == 'pixel'),
                     ),
                     Complex2Vec(),
+                    Compress(),
                 ]
             )
             self.train_transform = torchio.Compose(
@@ -274,12 +275,8 @@ class DataModuleBase(pl.LightningDataModule):
                     self.get_preprocessing_transform().apply_transform(subject)
                 )
 
-                transformed_subject['input'].save(
-                    dir_path / f'input_{idx}.nii.gz'
-                )
-                transformed_subject['label'].save(
-                    dir_path / f'label_{idx}.nii.gz'
-                )
+                transformed_subject['input'].save(dir_path / f'input_{idx}.nii.gz')
+                transformed_subject['label'].save(dir_path / f'label_{idx}.nii.gz')
 
 
 class UCSF51LesionDataModule(DataModuleBase):
@@ -372,9 +369,7 @@ class CNSLymphomaSSDataModule(DataModuleBase):
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=os.path.join(
-                os.getcwd(), datasets_dir, 'CNS_Lymphoma/'
-            ),
+            dataset_dir=os.path.join(os.getcwd(), datasets_dir, 'CNS_Lymphoma/'),
             num_classes=2,
             train_val_ratio=train_val_ratio,
             resampling_target_size=resampling_target_size,
@@ -388,9 +383,7 @@ class CNSLymphomaSSDataModule(DataModuleBase):
     def prepare_data(self) -> None:
         """Creates the subject list based on the SkullStripping dataset dir."""
         self.subject_list = []
-        image_files = glob.glob(
-            str(Path(self.dataset_dir) / 'imagesTr' / '*.nii.gz')
-        )
+        image_files = glob.glob(str(Path(self.dataset_dir) / 'imagesTr' / '*.nii.gz'))
 
         current_identifier = None
         current_subjects = []
@@ -409,9 +402,7 @@ class CNSLymphomaSSDataModule(DataModuleBase):
             image_path = (
                 Path(self.dataset_dir) / 'imagesTr' / f'{accession}_0000.nii.gz'
             )
-            seg_path = (
-                Path(self.dataset_dir) / 'labelsTr' / f'{accession}.nii.gz'
-            )
+            seg_path = Path(self.dataset_dir) / 'labelsTr' / f'{accession}.nii.gz'
 
             subject = torchio.Subject(
                 input=NDScalarImage(image_path),
@@ -451,9 +442,7 @@ class CNSLymphomaTissueDataModule(DataModuleBase):
             batch_size=batch_size,
             input_domain=input_domain,
             label_domain=label_domain,
-            dataset_dir=os.path.join(
-                os.getcwd(), datasets_dir, 'CNS_Lymphoma/'
-            ),
+            dataset_dir=os.path.join(os.getcwd(), datasets_dir, 'CNS_Lymphoma/'),
             num_classes=7,
             train_val_ratio=train_val_ratio,
             resampling_target_size=resampling_target_size,
@@ -468,17 +457,13 @@ class CNSLymphomaTissueDataModule(DataModuleBase):
     def prepare_data(self) -> None:
         """Creates the subject list based on the Tissue dataset dir."""
         self.subject_list = []
-        image_files = glob.glob(
-            os.path.join(self.dataset_dir, 'imagesTr', '*.nii.gz')
-        )
+        image_files = glob.glob(os.path.join(self.dataset_dir, 'imagesTr', '*.nii.gz'))
         for image in image_files:
             accession = os.path.basename(image).split('_')[0]
             image_path = os.path.join(
                 self.dataset_dir, 'imagesTr', f'{accession}_0000.nii.gz'
             )
-            seg_path = os.path.join(
-                self.dataset_dir, 'labelsTr', f'{accession}.nii.gz'
-            )
+            seg_path = os.path.join(self.dataset_dir, 'labelsTr', f'{accession}.nii.gz')
             subject = torchio.Subject(
                 input=NDScalarImage(image_path),
                 label=NDLabelMap(seg_path),
@@ -603,9 +588,7 @@ class UPennGBMSSDataModule(DataModuleBase):
     def prepare_data(self) -> None:
         """Creates the subject list based on the UPennGBM dataset dir."""
         self.subject_list = []
-        image_dir = os.path.join(
-            self.dataset_dir, 'images_structural_unstripped'
-        )
+        image_dir = os.path.join(self.dataset_dir, 'images_structural_unstripped')
         stripped_dir = os.path.join(self.dataset_dir, 'images_structural')
 
         # Go through each subject's folder
@@ -725,9 +708,7 @@ class UPennGBMTumorDataModule(DataModuleBase):
             base_name = os.path.basename(t1_image_path).split('_T1.nii.gz')[0]
 
             # Check for manually segmented labels
-            manual_segm = os.path.join(
-                manual_segm_dir, f'{base_name}_segm.nii.gz'
-            )
+            manual_segm = os.path.join(manual_segm_dir, f'{base_name}_segm.nii.gz')
             if os.path.exists(manual_segm):
                 segmentation_paths.append(manual_segm)
             else:
@@ -825,17 +806,13 @@ class OasisTissueDataModule(DataModuleBase):
                 os.path.join(self.dataset_dir, subject_dir)
             ):
                 # Build the mri directory path
-                mri_dir_path = os.path.join(
-                    self.dataset_dir, subject_dir, 'mri'
-                )
+                mri_dir_path = os.path.join(self.dataset_dir, subject_dir, 'mri')
 
                 # Check if both files exist in the mri directory
                 aseg_path = os.path.join(mri_dir_path, 'aseg.nii.gz')
                 brain_mask_path = os.path.join(mri_dir_path, 'brainmask.nii.gz')
 
-                if os.path.exists(aseg_path) and os.path.exists(
-                    brain_mask_path
-                ):
+                if os.path.exists(aseg_path) and os.path.exists(brain_mask_path):
                     subject = torchio.Subject(
                         input=NDScalarImage(brain_mask_path),
                         label=NDLabelMap(aseg_path),
