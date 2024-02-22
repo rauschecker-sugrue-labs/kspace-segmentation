@@ -19,7 +19,7 @@ dependencies = [
     'einops',
     'opencv-python',
     'pandas',
-    #'perceiver-io',
+    'perceiver-io',
     'pyarrow',
     'pytorch_lightning == 2.0.5',
     'ray == 2.5.1',

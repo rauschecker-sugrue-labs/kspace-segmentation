@@ -231,7 +231,6 @@ class Vec2Complex(NDTransform, torchio.SpatialTransform):
 
         cols_rest = torch.complex(real=data[:, 0, :, :, 1:], imag=data[:, 1, :, :, 1:])
 
-        print(data.shape, cols_rest.shape, cols_decompressed.shape)
         data = rearrange(
             pack(
                 [
