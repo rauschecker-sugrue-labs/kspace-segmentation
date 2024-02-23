@@ -29,9 +29,6 @@ dependencies = [
     'torchvision == 0.15.2'
 ]
 
-[project.optional-dependencies]
-docs = ["sphinx", "furo"]
-
 [tool.setuptools]
 py-modules = ["kseg"]
 

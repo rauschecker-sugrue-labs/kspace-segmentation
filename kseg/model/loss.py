@@ -52,15 +52,21 @@ class HighFreqMSELoss(nn.Module):
         if self.fourier_plane_enc == 'sagittal':
             enc_shape = diff.shape[-3:-1]
             freq_weights = self.get_freq_weights(enc_shape, diff.device.type)
-            freq_weights = freq_weights[np.newaxis, np.newaxis, :, :, np.newaxis]
+            freq_weights = freq_weights[
+                np.newaxis, np.newaxis, :, :, np.newaxis
+            ]
         elif self.fourier_plane_enc == 'coronal':
             enc_shape = (diff.shape[1], diff.shape[3])
             freq_weights = self.get_freq_weights(enc_shape, diff.device.type)
-            freq_weights = freq_weights[np.newaxis, :, np.newaxis, :, np.newaxis]
+            freq_weights = freq_weights[
+                np.newaxis, :, np.newaxis, :, np.newaxis
+            ]
         elif self.fourier_plane_enc == 'axial':
             enc_shape = diff.shape[1:3]
             freq_weights = self.get_freq_weights(enc_shape, diff.device.type)
-            freq_weights = freq_weights[np.newaxis, :, :, np.newaxis, np.newaxis]
+            freq_weights = freq_weights[
+                np.newaxis, :, :, np.newaxis, np.newaxis
+            ]
         else:
             raise ValueError('Unknown Fourier plane encoding')
 
@@ -167,7 +173,9 @@ class DiceLoss(nn.Module):
         union = reduce(inputs + targets, 'b c v x y z -> c', 'sum')
 
         # Calculate Dice score for each class
-        dice_scores = (2.0 * intersection + self.smooth) / (union + self.smooth)
+        dice_scores = (2.0 * intersection + self.smooth) / (
+            union + self.smooth
+        )
         return 1 - dice_scores.mean()
 
 
@@ -202,7 +210,9 @@ class WeightedMSELoss(nn.Module):
 
         loss = 0
         for i, w in enumerate(self.weight):
-            mse_class = F.mse_loss(y_hat[:, i, ...], y[:, i, ...], reduction='none')
+            mse_class = F.mse_loss(
+                y_hat[:, i, ...], y[:, i, ...], reduction='none'
+            )
             weighted_mse_class = w * mse_class
             loss += weighted_mse_class.sum()
 

@@ -15,11 +15,15 @@ def main():
 
 
 @main.command()
-@click.argument('src_path', default='/data/TBrecon1/miccai_challenge/train/untarred/')
+@click.argument(
+    'src_path', default='/data/TBrecon1/miccai_challenge/train/untarred/'
+)
 @click.argument('dest_path', default='/data/TBrecon3/kseg/')
 @click.option('--sanity-check', is_flag=True, default=False)
 @click.option('--resume', is_flag=True, default=False)
-def hdf2nii(src_path: str, dest_path: str, sanity_check: bool, resume: bool) -> None:
+def hdf2nii(
+    src_path: str, dest_path: str, sanity_check: bool, resume: bool
+) -> None:
     """Reads hdf files, splits each of them into image and label and save them.
 
     Args:
@@ -45,7 +49,9 @@ def hdf2nii(src_path: str, dest_path: str, sanity_check: bool, resume: bool) -> 
 
         # Unzip data and store it to destination directory
         with gzip.open(file, 'rb') as infile:
-            with open(os.path.join(dest_path, f'{file_name}.h5'), 'wb') as outfile:
+            with open(
+                os.path.join(dest_path, f'{file_name}.h5'), 'wb'
+            ) as outfile:
                 shutil.copyfileobj(infile, outfile)
 
         # Convert hdf file to two separate nii files (kspace + seg)
@@ -63,9 +69,13 @@ def hdf2nii(src_path: str, dest_path: str, sanity_check: bool, resume: bool) -> 
 
         # Sanity check - check if written things are the same as the read ones
         if sanity_check:
-            nii_kspace_file = nib.load(os.path.join(dest_path, f'{file_name}.nii.gz'))
+            nii_kspace_file = nib.load(
+                os.path.join(dest_path, f'{file_name}.nii.gz')
+            )
             nii_kspace = nii_kspace_file.get_fdata(dtype=np.complex64)
-            nii_seg_file = nib.load(os.path.join(dest_path, f'{file_name}_seg.nii.gz'))
+            nii_seg_file = nib.load(
+                os.path.join(dest_path, f'{file_name}_seg.nii.gz')
+            )
             nii_seg = nii_seg_file.get_fdata()
 
             if (not np.array_equal(nii_kspace, kspace)) or (

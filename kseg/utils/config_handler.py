@@ -5,8 +5,10 @@ import torch_optimizer
 import yaml
 
 from importlib import metadata
+from ray import tune
 from typing import Dict, Any, Optional, List, Tuple
 
+from kseg.data.lightning import DataModuleBase
 from kseg.model.loss import (
     DiceLoss,
     FocalLoss,
@@ -128,7 +130,9 @@ class ConfigHandler:
                 'WeightedCrossEntropyLoss': nn.CrossEntropyLoss(
                     weight=torch.Tensor(class_weights)
                 ),
-                'WeightedMSELoss': WeightedMSELoss(weight=torch.Tensor(class_weights)),
+                'WeightedMSELoss': WeightedMSELoss(
+                    weight=torch.Tensor(class_weights)
+                ),
             }
             replace_pattern.update(weighted_losses)
 
@@ -183,7 +187,8 @@ class ConfigHandler:
                 config.update(parsed_config['tuning'][model_name])
         else:
             raise ValueError(
-                f'No config for model \'{model_name}\' available. ' 'Check config file.'
+                f'No config for model \'{model_name}\' available. '
+                'Check config file.'
             )
 
         # Add information about shapes and domains. Write command line parameters
