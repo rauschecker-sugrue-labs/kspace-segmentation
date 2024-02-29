@@ -16,10 +16,10 @@ readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     'click == 8.1.6',
-    'einops',
+    'einops == 0.6.1',
     'opencv-python',
     'pandas',
-    'perceiver-io',
+    'perceiver-io @ git+https://github.com/egosche/perceiver-io@main',
     'pyarrow',
     'pytorch_lightning == 2.0.5',
     'ray == 2.5.1',
