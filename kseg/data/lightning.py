@@ -81,7 +81,7 @@ class DataModuleBase(pl.LightningDataModule):
                 2,
                 self.crop_size[0],
                 self.crop_size[1],
-                self.crop_size[2] // 2 + 1,
+                self.crop_size[2] // 2,
             )
         return (
             self.num_classes,

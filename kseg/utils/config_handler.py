@@ -12,6 +12,7 @@ from kseg.model.loss import (
     FocalLoss,
     HighFreqMSELoss,
     WeightedMSELoss,
+    NMSELoss,
 )
 
 
@@ -114,6 +115,7 @@ class ConfigHandler:
             'FocalLoss': FocalLoss(),
             'HighFreqMSELoss': HighFreqMSELoss(),
             'MSELoss': nn.MSELoss(),
+            'NMSELoss': NMSELoss(),
             # Optimizer
             'Adam': optim.Adam,
             'Adagrad': optim.Adagrad,
