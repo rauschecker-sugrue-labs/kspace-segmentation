@@ -394,8 +394,9 @@ class Compress(NDTransform, torchio.SpatialTransform):
 
             compressed_col = rearrange([real, imag], 'v c x y z -> c v x y z')
             remaining_cols = data[:, :, :, :, 1:-1]
-
             image.set_data(pack([compressed_col, remaining_cols], 'c v x y *')[0])
+        
+        return subject
 
     @staticmethod
     def is_invertible() -> bool:
@@ -469,6 +470,8 @@ class Decompress(NDTransform, torchio.SpatialTransform):
             )[0]
 
             image.set_data(data)
+        
+        return subject
 
     @staticmethod
     def is_invertible() -> bool:

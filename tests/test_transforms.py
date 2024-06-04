@@ -177,7 +177,8 @@ class TestCompress(TestCase):
         )
         image = NDScalarImage(tensor=data)
         subject = torchio.Subject(one_image=image)
-        transform.apply_transform(subject)
+        subject = transform.apply_transform(subject)
+        image = subject['one_image']
 
         torch.testing.assert_close(
             image.data[:, 0, :, :, :],
@@ -229,8 +230,9 @@ class TestDecompress(TestCase):
         )
         image = NDScalarImage(tensor=data)
         subject = torchio.Subject(one_image=image)
-        transform.apply_transform(subject)
-        inverse_transform.apply_transform(subject)
+        subject = transform.apply_transform(subject)
+        subject = inverse_transform.apply_transform(subject)
+        image = subject['one_image']
         torch.testing.assert_close(image.data, data)
 
     def test_is_invertible(self):

@@ -103,6 +103,24 @@ class HighFreqMSELoss(nn.Module):
         return weights
 
 
+class NMSELoss(nn.Module):
+    def __init__(self) -> None:
+        """Initilization for normalize MSE loss"""
+        super().__init__()
+
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> float:
+        """Calculate the normalize MSE loss
+        
+        Args:
+            inputs: Predicted values.
+            targets: Ground truth values.
+
+        Returns:
+            Normalized MSE loss.
+        """
+        return torch.sum((inputs - targets) ** 2) / torch.sum(targets ** 2)
+
+
 class FocalLoss(nn.Module):
     def __init__(self) -> None:
         """Initialization of the focal loss."""
