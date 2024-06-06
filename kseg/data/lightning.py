@@ -1,16 +1,15 @@
 import glob
 import os
 import re
+from pathlib import Path
+from typing import List, Optional, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
 import torchio
 
-from pathlib import Path
-from typing import List, Optional, Tuple, Union
-
-from kseg.data.custom_torchio import NDScalarImage, NDLabelMap
-from kseg.data.transforms import KSpace, Complex2Vec, Unsqueeze, Compress
+from kseg.data.custom_torchio import NDLabelMap, NDScalarImage
+from kseg.data.transforms import Complex2Vec, Compress, KSpace, Unsqueeze
 
 
 class DataModuleBase(pl.LightningDataModule):
@@ -52,7 +51,7 @@ class DataModuleBase(pl.LightningDataModule):
         self.subject_list = None
         self.max_queue_length = 16
         self.patches_per_volume = 32
-        self.sampler = torchio.UniformSampler(self.crop_size[:2] + (1))
+        self.sampler = torchio.UniformSampler(self.crop_size[:2] + (1,))
 
     @property
     def input_shape(self) -> Tuple:
