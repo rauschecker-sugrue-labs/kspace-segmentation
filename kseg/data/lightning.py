@@ -9,6 +9,7 @@ import torch
 import torchio
 
 from kseg.data.custom_torchio import NDLabelMap, NDScalarImage
+from kseg.data.sampler import UniformSampler
 from kseg.data.transforms import (
     Complex2Vec,
     Compress,
@@ -57,7 +58,11 @@ class DataModuleBase(pl.LightningDataModule):
         self.subject_list = None
         self.max_queue_length = 16
         self.patches_per_volume = 32
-        self.sampler = torchio.UniformSampler(self.crop_size[:2] + (1,))
+        self.sampler = UniformSampler(
+            # Set patch size to (64, 64, 1) (x, y, z)
+            patch_size=self.crop_size[:2]
+            + (1,)
+        )
 
     @property
     def input_shape(self) -> Tuple:

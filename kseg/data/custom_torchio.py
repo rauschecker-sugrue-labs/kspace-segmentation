@@ -1,7 +1,7 @@
 import copy
 import warnings
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import nibabel as nib
 import numpy as np
@@ -74,6 +74,11 @@ class NDScalarImage(torchio.ScalarImage):
             shape = torchio.data.io.read_shape(self.path)
         return shape
 
+    @property
+    def spatial_shape(self):
+        """Tensor spatial shape as :math:`(W, H, D)`."""
+        return self.shape[-3:]  # use last three axis instead of all after 1st
+
 
 class NDLabelMap(torchio.LabelMap):
     """Extends torchio LabelMap class to support n-dimensional tensors."""
@@ -136,6 +141,11 @@ class NDLabelMap(torchio.LabelMap):
             assert isinstance(self.path, (str, Path))
             shape = torchio.data.io.read_shape(self.path)
         return shape
+    
+    @property
+    def spatial_shape(self):
+        """Tensor spatial shape as :math:`(W, H, D)`."""
+        return self.shape[-3:]  # use last three axis instead of all after 1st
 
 
 class NDDataParser(torchio.transforms.data_parser.DataParser):
@@ -270,3 +280,48 @@ class NDTransform(torchio.Transform):
             output = transformed
 
         return output
+
+    @staticmethod
+    def parse_bounds(bounds_parameters):
+        """Custom parse_bounds that ignores the length of bounds parameter to
+        support N-dim patches.
+
+        Args:
+            bounds_parameters: _description_
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            _description_
+        """
+        if bounds_parameters is None:
+            return None
+        try:
+            bounds_parameters = tuple(bounds_parameters)  # type: ignore[assignment,arg-type]  # noqa: B950
+        except TypeError:
+            bounds_parameters = (bounds_parameters,)  # type: ignore[assignment]  # noqa: B950
+
+        # Check that numbers are integers
+        for number in bounds_parameters:  # type: ignore[union-attr]
+            if not isinstance(number, (int, np.integer)) or number < 0:
+                message = (
+                    'Bounds values must be integers greater or equal to zero,'
+                    f' not "{bounds_parameters}" of type {type(number)}'
+                )
+                raise ValueError(message)
+        bounds_parameters_tuple = tuple(int(n) for n in bounds_parameters)  # type: ignore[assignment,union-attr]  # noqa: B950
+        print(f'bounds_parameters_tuple: {bounds_parameters_tuple}')
+        return bounds_parameters_tuple  # type: ignore[return-value]
+
+
+class NDSpatialTransform(NDTransform):
+    """Transform that modifies N-dim image bounds or voxels positions."""
+
+    def get_images(self, subject: Subject) -> List[Image]:
+        images = subject.get_images(
+            intensity_only=False,
+            include=self.include,
+            exclude=self.exclude,
+        )
+        return images
