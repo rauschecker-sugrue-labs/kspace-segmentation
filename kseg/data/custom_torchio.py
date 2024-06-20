@@ -1,15 +1,15 @@
 import copy
+import warnings
+from pathlib import Path
+from typing import Optional
+
 import nibabel as nib
 import numpy as np
 import SimpleITK as sitk
 import torch
 import torchio
-import warnings
-
-from pathlib import Path
 from torchio.data.image import Image
 from torchio.data.subject import Subject
-from typing import Optional
 
 
 class NDScalarImage(torchio.ScalarImage):
@@ -231,9 +231,9 @@ class NDDataParser(torchio.transforms.data_parser.DataParser):
 class NDTransform(torchio.Transform):
     """Extends torchio Transform class to support n-dimensional tensors."""
 
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         """Initialization of the NDTransform class."""
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def __call__(self, data):
         """Overrides the torchio.Transform __call__ method."""

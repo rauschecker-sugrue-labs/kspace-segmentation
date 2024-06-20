@@ -9,7 +9,13 @@ import torch
 import torchio
 
 from kseg.data.custom_torchio import NDLabelMap, NDScalarImage
-from kseg.data.transforms import Complex2Vec, Compress, KSpace, Unsqueeze
+from kseg.data.transforms import (
+    Complex2Vec,
+    Compress,
+    KSpace,
+    LabelMapping,
+    Unsqueeze,
+)
 
 
 class DataModuleBase(pl.LightningDataModule):
@@ -233,8 +239,8 @@ class DataModuleBase(pl.LightningDataModule):
         """
         train_queue = torchio.Queue(
             self.train_set,
-            self.queue_length,
-            self.samples_per_volume,
+            self.max_queue_length,
+            self.patches_per_volume,
             self.sampler,
             num_workers=32,
         )
@@ -859,65 +865,55 @@ class OasisTissueDataModule(DataModuleBase):
         Returns:
             Transformations for the preprocessing step.
         """
-
-        def custom_mapping(x):
-            # Map FreeSurfer label values to kseg tissue label values
-            mapping = {
-                0: 0,
-                2: 3,
-                3: 2,
-                4: 1,
-                5: 1,
-                7: 6,
-                8: 6,
-                10: 4,
-                11: 4,
-                12: 4,
-                13: 4,
-                14: 1,
-                15: 1,
-                16: 5,
-                17: 4,
-                18: 4,
-                24: 1,
-                26: 4,
-                28: 4,
-                30: 1,
-                41: 3,
-                42: 2,
-                43: 1,
-                44: 1,
-                46: 6,
-                47: 6,
-                49: 4,
-                50: 4,
-                51: 4,
-                52: 4,
-                53: 4,
-                54: 4,
-                58: 4,
-                60: 4,
-                62: 1,
-                72: 1,
-                78: 3,
-                79: 3,
-                81: 4,
-                82: 4,
-                85: 5,
-            }
-            # This is used to prevent replacing replaced values
-            replaced_mask = torch.zeros_like(x).bool()
-
-            for original, new in mapping.items():
-                mask = (x == original) & (~replaced_mask)
-                x[mask] = new
-                replaced_mask[mask] = True
-            return x
+        # Map FreeSurfer label values to kseg tissue label values
+        mapping = {
+            0: 0,
+            2: 3,
+            3: 2,
+            4: 1,
+            5: 1,
+            7: 6,
+            8: 6,
+            10: 4,
+            11: 4,
+            12: 4,
+            13: 4,
+            14: 1,
+            15: 1,
+            16: 5,
+            17: 4,
+            18: 4,
+            24: 1,
+            26: 4,
+            28: 4,
+            30: 1,
+            41: 3,
+            42: 2,
+            43: 1,
+            44: 1,
+            46: 6,
+            47: 6,
+            49: 4,
+            50: 4,
+            51: 4,
+            52: 4,
+            53: 4,
+            54: 4,
+            58: 4,
+            60: 4,
+            62: 1,
+            72: 1,
+            78: 3,
+            79: 3,
+            81: 4,
+            82: 4,
+            85: 5,
+        }
 
         preprocess = torchio.Compose(
             [
                 # Map FreeSurfer label classes to custom label classes
-                torchio.Lambda(custom_mapping, types_to_apply=[torchio.LABEL]),
+                LabelMapping(mapping),
                 torchio.ToCanonical(),
                 torchio.Resample('input'),
                 torchio.Resample(self.resampling_target_size),

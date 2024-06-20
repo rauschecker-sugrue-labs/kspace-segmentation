@@ -7,8 +7,6 @@ from einops import pack, parse_shape, rearrange
 from kseg.data.custom_torchio import NDTransform
 
 
-
-
 class DomainTransform(NDTransform):
     """Parent class for all domain transforms."""
 
@@ -146,7 +144,9 @@ class Complex2Vec(NDTransform, torchio.SpatialTransform):
         """
         for image in self.get_images(subject):
             if 'complex' in str(image.data.dtype):
-                image.set_data(pack([image.data.real, image.data.imag], 'c * x y z')[0])
+                image.set_data(
+                    pack([image.data.real, image.data.imag], 'c * x y z')[0]
+                )
             else:
                 image.set_data(rearrange(image.data, 'c x y z -> c 1 x y z'))
 
@@ -229,7 +229,9 @@ class Vec2Complex(NDTransform, torchio.SpatialTransform):
             'c z x y -> c x y z',
         )
 
-        cols_rest = torch.complex(real=data[:, 0, :, :, 1:], imag=data[:, 1, :, :, 1:])
+        cols_rest = torch.complex(
+            real=data[:, 0, :, :, 1:], imag=data[:, 1, :, :, 1:]
+        )
 
         data = rearrange(
             pack(
@@ -384,9 +386,19 @@ class Compress(NDTransform, torchio.SpatialTransform):
             )[0]
             imag = pack(
                 [
-                    data[:, 0, :, : shape['y'] // 2 + 1, shape['z'] - 1 : shape['z']],
                     data[
-                        :, 1, :, 1 : (shape['y'] + 1) // 2, shape['z'] - 1 : shape['z']
+                        :,
+                        0,
+                        :,
+                        : shape['y'] // 2 + 1,
+                        shape['z'] - 1 : shape['z'],
+                    ],
+                    data[
+                        :,
+                        1,
+                        :,
+                        1 : (shape['y'] + 1) // 2,
+                        shape['z'] - 1 : shape['z'],
                     ],
                 ],
                 'b x * z',
@@ -394,8 +406,10 @@ class Compress(NDTransform, torchio.SpatialTransform):
 
             compressed_col = rearrange([real, imag], 'v c x y z -> c v x y z')
             remaining_cols = data[:, :, :, :, 1:-1]
-            image.set_data(pack([compressed_col, remaining_cols], 'c v x y *')[0])
-        
+            image.set_data(
+                pack([compressed_col, remaining_cols], 'c v x y *')[0]
+            )
+
         return subject
 
     @staticmethod
@@ -440,9 +454,16 @@ class Decompress(NDTransform, torchio.SpatialTransform):
                 [
                     data[:, :, :, 0:1, 0:1],
                     data[:, :, :, 1 : (shape['y'] + 1) // 2, 0:1],
-                    data[:, :, :, (shape['y'] + 1) // 2 : shape['y'] // 2 + 1, 0:1],
+                    data[
+                        :,
+                        :,
+                        :,
+                        (shape['y'] + 1) // 2 : shape['y'] // 2 + 1,
+                        0:1,
+                    ],
                     torch.flip(
-                        data[:, :, :, 1 : (shape['y'] + 1) // 2, 0:1], dims=(-1,)
+                        data[:, :, :, 1 : (shape['y'] + 1) // 2, 0:1],
+                        dims=(-1,),
                     ),
                 ],
                 'c z x * v',
@@ -470,7 +491,7 @@ class Decompress(NDTransform, torchio.SpatialTransform):
             )[0]
 
             image.set_data(data)
-        
+
         return subject
 
     @staticmethod
@@ -490,3 +511,41 @@ class Decompress(NDTransform, torchio.SpatialTransform):
             Compress transformation.
         """
         return Compress()
+
+
+class LabelMapping(NDTransform):
+    def __init__(self, custom_mapping: dict) -> None:
+        """Initialization of the LabelMapping transformation."""
+        super().__init__()
+        self.mapping = custom_mapping
+
+    def apply_transform(self, subject: torchio.Subject) -> torchio.Subject:
+        """Applies the 2D real FFT on the given subject.
+
+        Args:
+            subject: Subject to be transformed. The data must be in RAS+
+                orientation (c, x, y, z).
+
+        Returns:
+            Transformed subject.
+        """
+        for label in subject.get_images(
+            intensity_only=False, exclude=['input']
+        ):
+            replaced_mask = torch.zeros_like(label.data).bool()
+            x = label.data
+            for original, new in self.mapping.items():
+                mask = (x == original) & (~replaced_mask)
+                x[mask] = new
+                replaced_mask[mask] = True
+            label.set_data(x)
+        return subject
+
+    @staticmethod
+    def is_invertible() -> bool:
+        """Shows whether the LabelMapping transformation is invertible.
+
+        Returns:
+            Whether the LabelMapping transformation is invertible.
+        """
+        return False
