@@ -179,11 +179,9 @@ class DataModuleBase(pl.LightningDataModule):
         if self.input_domain == 'kspace':
             domain_transform = torchio.Compose(
                 [
-                    KSpace(
-                        exclude_label=(self.label_domain == 'pixel'),
-                    ),
+                    KSpace(exclude_label=(self.label_domain == 'pixel')),
                     Complex2Vec(),
-                    Compress(),
+                    Compress(exclude_label=(self.label_domain == 'pixel')),
                 ]
             )
             self.train_transform = torchio.Compose(

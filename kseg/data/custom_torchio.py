@@ -241,9 +241,18 @@ class NDDataParser(torchio.transforms.data_parser.DataParser):
 class NDTransform(torchio.Transform):
     """Extends torchio Transform class to support n-dimensional tensors."""
 
-    def __init__(self, *args, **kwargs) -> None:
-        """Initialization of the NDTransform class."""
+    def __init__(self, exclude_label: bool = False, *args, **kwargs) -> None:
+        """Initialization of the NDTransform class.
+
+        Args:
+            exclude_label: Whether to exlcude the label for the transformation.
+                Defaults to False.
+
+        Returns:
+            None.
+        """
         super().__init__(*args, **kwargs)
+        self.exclude_label = exclude_label
 
     def __call__(self, data):
         """Overrides the torchio.Transform __call__ method."""
@@ -280,6 +289,14 @@ class NDTransform(torchio.Transform):
             output = transformed
 
         return output
+
+    def get_images(self, subject: torchio.Subject) -> List[torchio.Image]:
+        images = subject.get_images(
+            intensity_only=self.exclude_label,
+            include=self.include,
+            exclude=self.exclude,
+        )
+        return images
 
     @staticmethod
     def parse_bounds(bounds_parameters):

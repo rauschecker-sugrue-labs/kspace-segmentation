@@ -1,5 +1,3 @@
-from typing import List
-
 import torch
 import torchio
 from einops import pack, parse_shape, rearrange
@@ -7,33 +5,13 @@ from einops import pack, parse_shape, rearrange
 from kseg.data.custom_torchio import NDTransform
 
 
-class DomainTransform(NDTransform):
-    """Parent class for all domain transforms."""
-
-    def __init__(self, exclude_label: bool) -> None:
-        """Initalization of the Domain Transform class.
-
-        Args:
-            exclude_label: Whether to exclude the label for the transformation.
-        """
-        super().__init__()
-        self.exclude_label = exclude_label
-
-    def get_images(self, subject: torchio.Subject) -> List[torchio.Image]:
-        images = subject.get_images(
-            intensity_only=self.exclude_label,
-            include=self.include,
-            exclude=self.exclude,
-        )
-        return images
-
-
-class KSpace(DomainTransform, torchio.FourierTransform):
-    def __init__(self, exclude_label: bool) -> None:
+class KSpace(NDTransform, torchio.FourierTransform):
+    def __init__(self, exclude_label: bool = False) -> None:
         """Initialization of the KSpace transformation.
 
         Args:
             exclude_label: Whether to exlcude the label for the transformation.
+                Defaults to False.
         """
         super().__init__(exclude_label)
 
@@ -70,7 +48,7 @@ class KSpace(DomainTransform, torchio.FourierTransform):
         return InverseKSpace(exclude_label=self.exclude_label)
 
 
-class InverseKSpace(DomainTransform, torchio.FourierTransform):
+class InverseKSpace(NDTransform, torchio.FourierTransform):
     def __init__(self, exclude_label: bool) -> None:
         """Initialization of the inverse KSpace Transformation.
 
@@ -350,9 +328,12 @@ class Squeeze(NDTransform, torchio.SpatialTransform):
 
 
 class Compress(NDTransform, torchio.SpatialTransform):
-    def __init__(self) -> None:
-        """Initialization for compression transformation."""
-        super().__init__()
+    def __init__(self, exclude_label: bool) -> None:
+        """Initialization for compression transformation.
+        Args:
+            exclude_label: Whether to exlcude the label for the transformation.
+        """
+        super().__init__(exclude_label)
 
     def apply_transform(self, subject: torchio.Subject) -> torchio.Subject:
         """Performs lossless compression on the vecotrized 2D rfft.
