@@ -141,7 +141,7 @@ class NDLabelMap(torchio.LabelMap):
             assert isinstance(self.path, (str, Path))
             shape = torchio.data.io.read_shape(self.path)
         return shape
-    
+
     @property
     def spatial_shape(self):
         """Tensor spatial shape as :math:`(W, H, D)`."""
@@ -311,7 +311,6 @@ class NDTransform(torchio.Transform):
                 )
                 raise ValueError(message)
         bounds_parameters_tuple = tuple(int(n) for n in bounds_parameters)  # type: ignore[assignment,union-attr]  # noqa: B950
-        print(f'bounds_parameters_tuple: {bounds_parameters_tuple}')
         return bounds_parameters_tuple  # type: ignore[return-value]
 
 

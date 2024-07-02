@@ -60,8 +60,8 @@ class DataModuleBase(pl.LightningDataModule):
         self.patches_per_volume = 32
         self.sampler = UniformSampler(
             # Set patch size to (64, 64, 1) (x, y, z)
-            patch_size=self.crop_size[:2]
-            + (1,)
+            patch_size=(1,)
+            + self.crop_size[1:]
         )
 
     @property
