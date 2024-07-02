@@ -1,16 +1,15 @@
 import glob
 import os
 import re
+from pathlib import Path
+from typing import List, Optional, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
 import torchio
 
-from pathlib import Path
-from typing import List, Optional, Tuple, Union
-
-from kseg.data.custom_torchio import NDScalarImage, NDLabelMap
-from kseg.data.transforms import KSpace, Complex2Vec, Unsqueeze, Compress
+from kseg.data.custom_torchio import NDLabelMap, NDScalarImage
+from kseg.data.transforms import Complex2Vec, Compress, KSpace, Unsqueeze
 
 
 class DataModuleBase(pl.LightningDataModule):
@@ -166,11 +165,9 @@ class DataModuleBase(pl.LightningDataModule):
         if self.input_domain == 'kspace':
             domain_transform = torchio.Compose(
                 [
-                    KSpace(
-                        exclude_label=(self.label_domain == 'pixel'),
-                    ),
+                    KSpace(exclude_label=(self.label_domain == 'pixel')),
                     Complex2Vec(),
-                    Compress(),
+                    Compress(exclude_label=(self.label_domain == 'pixel')),
                 ]
             )
             self.train_transform = torchio.Compose(
