@@ -56,8 +56,8 @@ class DataModuleBase(pl.LightningDataModule):
         self.crop_size = crop_size
         self.class_weights = class_weights
         self.subject_list = None
-        self.max_queue_length = 16
-        self.patches_per_volume = 32
+        self.max_queue_length = 64
+        self.patches_per_volume = 64
         self.sampler = UniformSampler((1, 64, 64))
 
     @property
