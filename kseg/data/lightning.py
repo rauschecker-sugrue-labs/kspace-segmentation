@@ -58,48 +58,46 @@ class DataModuleBase(pl.LightningDataModule):
         self.subject_list = None
         self.max_queue_length = 16
         self.patches_per_volume = 32
-        self.sampler = UniformSampler(
-            # Set patch size to (64, 64, 1) (x, y, z)
-            patch_size=(1,)
-            + self.crop_size[1:]
-        )
+        self.sampler = UniformSampler((1, 64, 64))
 
     @property
     def input_shape(self) -> Tuple:
         """Input shape property.
 
         Returns:
-            Input shape.
+            Input shape (classes, complex values, sagittal slice, coronal
+                slices, axial slices).
         """
         if self.input_domain == 'kspace':
             return (
                 1,
                 2,
-                self.crop_size[0],
+                1,
                 self.crop_size[1],
                 self.crop_size[2] // 2,
             )
-        return 1, 1, self.crop_size[0], self.crop_size[1], self.crop_size[2]
+        return 1, 1, 1, self.crop_size[1], self.crop_size[2]
 
     @property
     def label_shape(self) -> Tuple:
         """Label shape property.
 
         Returns:
-            Label shape.
+            Label shape(classes, complex values, sagittal slice, coronal
+                slices, axial slices).
         """
         if self.label_domain == 'kspace':
             return (
                 self.num_classes,
                 2,
-                self.crop_size[0],
+                1,
                 self.crop_size[1],
                 self.crop_size[2] // 2,
             )
         return (
             self.num_classes,
             1,
-            self.crop_size[0],
+            1,
             self.crop_size[1],
             self.crop_size[2],
         )
