@@ -182,7 +182,7 @@ class UniformSampler(RandomSampler):
         subject: Subject,
         num_patches: Optional[int] = None,
     ) -> Generator[Subject, None, None]:
-        valid_range = subject.spatial_shape[0] - self.patch_size[0]
+        valid_range = subject['input'].spatial_shape[0] - self.patch_size[0]
         patches_left = num_patches if num_patches is not None else True
         while patches_left:
             index_ini = int(torch.randint(valid_range + 1, (1,)).item())
