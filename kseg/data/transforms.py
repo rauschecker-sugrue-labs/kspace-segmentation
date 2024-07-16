@@ -1,5 +1,3 @@
-from typing import List
-
 import torch
 import torchio
 from einops import pack, parse_shape, rearrange
@@ -7,35 +5,13 @@ from einops import pack, parse_shape, rearrange
 from kseg.data.custom_torchio import NDTransform
 
 
-
-
-class DomainTransform(NDTransform):
-    """Parent class for all domain transforms."""
-
-    def __init__(self, exclude_label: bool) -> None:
-        """Initalization of the Domain Transform class.
-
-        Args:
-            exclude_label: Whether to exclude the label for the transformation.
-        """
-        super().__init__()
-        self.exclude_label = exclude_label
-
-    def get_images(self, subject: torchio.Subject) -> List[torchio.Image]:
-        images = subject.get_images(
-            intensity_only=self.exclude_label,
-            include=self.include,
-            exclude=self.exclude,
-        )
-        return images
-
-
-class KSpace(DomainTransform, torchio.FourierTransform):
-    def __init__(self, exclude_label: bool) -> None:
+class KSpace(NDTransform, torchio.FourierTransform):
+    def __init__(self, exclude_label: bool = False) -> None:
         """Initialization of the KSpace transformation.
 
         Args:
             exclude_label: Whether to exlcude the label for the transformation.
+                Defaults to False.
         """
         super().__init__(exclude_label)
 
@@ -72,7 +48,7 @@ class KSpace(DomainTransform, torchio.FourierTransform):
         return InverseKSpace(exclude_label=self.exclude_label)
 
 
-class InverseKSpace(DomainTransform, torchio.FourierTransform):
+class InverseKSpace(NDTransform, torchio.FourierTransform):
     def __init__(self, exclude_label: bool) -> None:
         """Initialization of the inverse KSpace Transformation.
 
@@ -146,7 +122,9 @@ class Complex2Vec(NDTransform, torchio.SpatialTransform):
         """
         for image in self.get_images(subject):
             if 'complex' in str(image.data.dtype):
-                image.set_data(pack([image.data.real, image.data.imag], 'c * x y z')[0])
+                image.set_data(
+                    pack([image.data.real, image.data.imag], 'c * x y z')[0]
+                )
             else:
                 image.set_data(rearrange(image.data, 'c x y z -> c 1 x y z'))
 
@@ -229,7 +207,9 @@ class Vec2Complex(NDTransform, torchio.SpatialTransform):
             'c z x y -> c x y z',
         )
 
-        cols_rest = torch.complex(real=data[:, 0, :, :, 1:], imag=data[:, 1, :, :, 1:])
+        cols_rest = torch.complex(
+            real=data[:, 0, :, :, 1:], imag=data[:, 1, :, :, 1:]
+        )
 
         data = rearrange(
             pack(
@@ -348,9 +328,12 @@ class Squeeze(NDTransform, torchio.SpatialTransform):
 
 
 class Compress(NDTransform, torchio.SpatialTransform):
-    def __init__(self) -> None:
-        """Initialization for compression transformation."""
-        super().__init__()
+    def __init__(self, exclude_label: bool) -> None:
+        """Initialization for compression transformation.
+        Args:
+            exclude_label: Whether to exlcude the label for the transformation.
+        """
+        super().__init__(exclude_label)
 
     def apply_transform(self, subject: torchio.Subject) -> torchio.Subject:
         """Performs lossless compression on the vecotrized 2D rfft.
@@ -384,9 +367,19 @@ class Compress(NDTransform, torchio.SpatialTransform):
             )[0]
             imag = pack(
                 [
-                    data[:, 0, :, : shape['y'] // 2 + 1, shape['z'] - 1 : shape['z']],
                     data[
-                        :, 1, :, 1 : (shape['y'] + 1) // 2, shape['z'] - 1 : shape['z']
+                        :,
+                        0,
+                        :,
+                        : shape['y'] // 2 + 1,
+                        shape['z'] - 1 : shape['z'],
+                    ],
+                    data[
+                        :,
+                        1,
+                        :,
+                        1 : (shape['y'] + 1) // 2,
+                        shape['z'] - 1 : shape['z'],
                     ],
                 ],
                 'b x * z',
@@ -394,8 +387,10 @@ class Compress(NDTransform, torchio.SpatialTransform):
 
             compressed_col = rearrange([real, imag], 'v c x y z -> c v x y z')
             remaining_cols = data[:, :, :, :, 1:-1]
-            image.set_data(pack([compressed_col, remaining_cols], 'c v x y *')[0])
-        
+            image.set_data(
+                pack([compressed_col, remaining_cols], 'c v x y *')[0]
+            )
+
         return subject
 
     @staticmethod
@@ -440,9 +435,16 @@ class Decompress(NDTransform, torchio.SpatialTransform):
                 [
                     data[:, :, :, 0:1, 0:1],
                     data[:, :, :, 1 : (shape['y'] + 1) // 2, 0:1],
-                    data[:, :, :, (shape['y'] + 1) // 2 : shape['y'] // 2 + 1, 0:1],
+                    data[
+                        :,
+                        :,
+                        :,
+                        (shape['y'] + 1) // 2 : shape['y'] // 2 + 1,
+                        0:1,
+                    ],
                     torch.flip(
-                        data[:, :, :, 1 : (shape['y'] + 1) // 2, 0:1], dims=(-1,)
+                        data[:, :, :, 1 : (shape['y'] + 1) // 2, 0:1],
+                        dims=(-1,),
                     ),
                 ],
                 'c z x * v',
@@ -470,7 +472,7 @@ class Decompress(NDTransform, torchio.SpatialTransform):
             )[0]
 
             image.set_data(data)
-        
+
         return subject
 
     @staticmethod
