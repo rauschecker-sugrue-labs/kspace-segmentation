@@ -1,22 +1,27 @@
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
 import cv2
 import nibabel as nib
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-import torchvision.utils as vutils
 import torchvision.transforms.functional as vfunctional
-
+import torchvision.utils as vutils
 from einops import rearrange
-from pathlib import Path
-from typing import Tuple, Dict, List, Any
-from torch.optim import lr_scheduler, Optimizer
-from torchmetrics import Specificity, Recall
+from torch.optim import Optimizer, lr_scheduler
+from torchmetrics import Recall, Specificity
 
-
-from kseg.data.transforms import InverseKSpace, Vec2Complex, Decompress
-from kseg.model.modules import DiceScore
-from kseg.model.modules import MLP, PerceiverIO, SkipMLP, ResMLP, Transformer
+from kseg.data.transforms import Decompress, InverseKSpace, Vec2Complex
+from kseg.model.modules import (
+    MLP,
+    DiceScore,
+    PerceiverIO,
+    ResMLP,
+    SkipMLP,
+    Transformer,
+)
 
 
 class LitModel(pl.LightningModule):
@@ -108,18 +113,31 @@ class LitModel(pl.LightningModule):
         scheduler = self.scheduler_class(optimizer, self.step_size)
         return [optimizer], [scheduler]
 
-    def infer_batch(self, batch: Dict[str, dict]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def infer_batch(
+        self, batch: Dict[str, dict], slicing: bool = False
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Propagate given batch through the Lightning Module.
 
         Args:
             batch: Batch containing the subjects.
+            slicing: Whether to propagate each slice separately through the net.
 
         Returns:
             Model output and corresponding ground truth.
         """
         x, y = batch['input']['data'], batch['label']['data']
         y = y.float()
-        y_hat = self.net(x)
+        if slicing:
+            y_hat = torch.zeros_like(y)
+            for ind in range(x.shape[3]):
+                y_hat_slice = self.net(
+                    torch.unsqueeze(x[:, :, :, ind, :, :], 3)
+                )
+                # Squeeze sagittal dimension of length 1
+                y_hat[:, :, :, ind, :, :] = torch.squeeze(y_hat_slice, dim=3)
+        else:
+
+            y_hat = self.net(x)
         return y_hat, y
 
     def training_step(self, batch: Dict[str, dict], batch_idx: int) -> float:
@@ -150,7 +168,7 @@ class LitModel(pl.LightningModule):
         Returns:
             Calculated loss.
         """
-        y_hat, y = self.infer_batch(batch)
+        y_hat, y = self.infer_batch(batch, slicing=True)
         x = batch['input']['data']
 
         # Calculate loss
@@ -247,7 +265,9 @@ class LitModel(pl.LightningModule):
             )
 
         # Save tensors as NIfTI files
-        output_dir = Path(f'{self.logger.save_dir}/test_samples/batch_{batch_idx}/')
+        output_dir = Path(
+            f'{self.logger.save_dir}/test_samples/batch_{batch_idx}/'
+        )
         self.tensors_to_nifti(x, y, y_hat, output_dir)
 
     def logits_to_mask(self, logits: torch.Tensor, num_classes: int):
@@ -269,7 +289,9 @@ class LitModel(pl.LightningModule):
             'b v x y z c -> b c v x y z',
         )
 
-    def evaluation_transform(self, variables: List[torch.Tensor]) -> List[torch.Tensor]:
+    def evaluation_transform(
+        self, variables: List[torch.Tensor]
+    ) -> List[torch.Tensor]:
         """Transform variables into pixel domain for evaluation.
 
         Args:
@@ -306,7 +328,8 @@ class LitModel(pl.LightningModule):
         """
         try:
             metric_dict = {
-                f"{prefix}_class_{i}": score.item() for i, score in enumerate(metrics)
+                f"{prefix}_class_{i}": score.item()
+                for i, score in enumerate(metrics)
             }
             self.log_dict(metric_dict, on_epoch=True)
         except TypeError:
@@ -344,13 +367,17 @@ class LitModel(pl.LightningModule):
         }
 
         # Transform x
-        x_slice = cv2.normalize(x_slice, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8U)
+        x_slice = cv2.normalize(
+            x_slice, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8U
+        )
         x_slice = cv2.cvtColor(x_slice, cv2.COLOR_GRAY2RGB)
         x_slice = np.transpose(torch.from_numpy(x_slice), axes=[2, 0, 1])
         x_slice = vfunctional.rotate(x_slice, 90)
 
         # Transform y
-        output_image = np.zeros((y_slice.shape[0], y_slice.shape[1], 3), dtype=np.uint8)
+        output_image = np.zeros(
+            (y_slice.shape[0], y_slice.shape[1], 3), dtype=np.uint8
+        )
         for value, color in color_map.items():
             mask = y_slice == value
             output_image[mask] = color
@@ -367,7 +394,9 @@ class LitModel(pl.LightningModule):
         for value, color in color_map.items():
             mask = y_hat_slice == value
             output_image[mask] = color
-        y_hat_slice = np.transpose(torch.from_numpy(output_image), axes=[2, 0, 1])
+        y_hat_slice = np.transpose(
+            torch.from_numpy(output_image), axes=[2, 0, 1]
+        )
         y_hat_slice = vfunctional.rotate(y_hat_slice, 90)
         y_hat_slice = torch.from_numpy(
             cv2.addWeighted(x_slice.numpy(), 0.5, y_hat_slice.numpy(), 0.5, 0)

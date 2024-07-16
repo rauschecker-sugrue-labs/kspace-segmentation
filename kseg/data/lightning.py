@@ -256,9 +256,7 @@ class DataModuleBase(pl.LightningDataModule):
         Returns:
             Dataloader for validation phase.
         """
-        return torch.utils.data.DataLoader(
-            self.val_set, self.batch_size, num_workers=10
-        )
+        return torch.utils.data.DataLoader(self.val_set, 1, num_workers=10)
 
     def test_dataloader(self) -> torch.utils.data.DataLoader:
         """Creates Dataloader for testing phase.
@@ -266,9 +264,7 @@ class DataModuleBase(pl.LightningDataModule):
         Returns:
             Dataloader for testing phase.
         """
-        return torch.utils.data.DataLoader(
-            self.test_set, self.batch_size, num_workers=10
-        )
+        return torch.utils.data.DataLoader(self.test_set, 1, num_workers=10)
 
     def save_preprocessed_data(self, path: Union[str, Path]) -> None:
         """Save preprocessed inputs and labels of data module.
