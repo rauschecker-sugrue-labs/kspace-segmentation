@@ -1,23 +1,21 @@
 import os
+from pathlib import Path
+from typing import Any, Dict
 
 import click
 import pytorch_lightning as pl
 import ray
-
-from pathlib import Path
 from pytorch_lightning.loggers import TensorBoardLogger
 from ray import air, tune
 from ray.tune import CLIReporter
-from ray.tune.schedulers import ASHAScheduler
 from ray.tune.integration.pytorch_lightning import TuneReportCallback
-from typing import Dict, Any
-
+from ray.tune.schedulers import ASHAScheduler
 
 from kseg.data.lightning import (
-    DataModuleBase,
-    KneeDataModule,
     CNSLymphomaSSDataModule,
     CNSLymphomaTissueDataModule,
+    DataModuleBase,
+    KneeDataModule,
     OasisTissueDataModule,
     UCSF51LesionDataModule,
     UPennGBMSSDataModule,
@@ -44,9 +42,15 @@ def main():
 @click.option('--num-cpus', '--cpus', default=32)
 @click.option('--num_gpus', '--gpus', default=1)
 @click.option('--skip-checkpoints', '--sc', is_flag=True, default=False)
-@click.option('--output_dir', '--out', default='.', type=click.Path(exists=True))
-@click.option('--datasets-path', default='./datasets', type=click.Path(exists=True))
-@click.option('--config-path', default='./config.yml', type=click.Path(exists=True))
+@click.option(
+    '--output_dir', '--out', default='.', type=click.Path(exists=True)
+)
+@click.option(
+    '--datasets-path', default='./datasets', type=click.Path(exists=True)
+)
+@click.option(
+    '--config-path', default='./config.yml', type=click.Path(exists=True)
+)
 @click.option('--resume', is_flag=True, default=False)
 @click.option('--tuning', is_flag=True, default=False)
 def train(
@@ -148,7 +152,9 @@ def train(
     # We're using grid search only, we sample each value once
     num_samples = 1
 
-    scheduler = ASHAScheduler(max_t=epochs, grace_period=100, reduction_factor=2)
+    scheduler = ASHAScheduler(
+        max_t=epochs, grace_period=100, reduction_factor=2
+    )
 
     # Display either hparams or standard parameter in CLIReporter
     if tuning:
@@ -157,7 +163,9 @@ def train(
             if isinstance(value, list):
                 config[key] = tune.grid_search(value)
         parameter_columns = [
-            k for k, v in config.items() if isinstance(v, dict) and 'grid_search' in v
+            k
+            for k, v in config.items()
+            if isinstance(v, dict) and 'grid_search' in v
         ]
     else:
         parameter_columns = ['lr', 'criterion']
@@ -181,7 +189,9 @@ def train(
     resources_per_trial = {'cpu': num_cpus, 'gpu': num_gpus}
 
     tuner = tune.Tuner(
-        tune.with_resources(train_fn_with_parameters, resources=resources_per_trial),
+        tune.with_resources(
+            train_fn_with_parameters, resources=resources_per_trial
+        ),
         tune_config=tune.TuneConfig(
             metric='val_avg_dice',
             mode='max',
@@ -205,13 +215,15 @@ def train(
 @click.argument('checkpoint_path', type=click.Path(exists=True))
 @click.option('--batch-size', default=4)
 @click.option('--num_gpus', '--gpus', default=1)
-@click.option('--config-path', default='./config.yml', type=click.Path(exists=True))
+@click.option(
+    '--datasets-path', default='./datasets', type=click.Path(exists=True)
+)
 def test(
     data_name: str,
     checkpoint_path: str,
     batch_size: int,
     num_gpus: int = 1,
-    config_path: str = './config.yml',
+    datasets_path: str = './datasets',
 ) -> None:
     """Starts the testing routine using the passed parameters.
 
@@ -220,6 +232,8 @@ def test(
         checkpoint_path: Path to the saved model checkpoint.
         batch_size: Batch size used for testing.
         num_gpus: Number of GPUs used for the testing. Defaults to 1.
+        datasets_path: Path to the datasets directory.
+            Defaults to './datasets/'.
 
     Raises:
         ValueError: Raised if specified data is unknown or given checkpoint
@@ -240,10 +254,6 @@ def test(
     model = LitModel.load_from_checkpoint(checkpoint_path)
     model.eval()
 
-    # Get config dict from YAML file without class substitutions
-    config_handler = ConfigHandler(config_path)
-    unparsed_config = config_handler.get_unparsed_config()
-
     # Initialize data module with domain config from checkpoint
     data_modules = {
         'Knee': KneeDataModule,
@@ -259,7 +269,7 @@ def test(
             batch_size=batch_size,
             input_domain=model.input_domain,
             label_domain=model.label_domain,
-            dataset_dir=unparsed_config['datasets'][data_name],
+            datasets_dir=datasets_path,
         )
     else:
         raise ValueError(f'Data module for {data_name} is not defined.')

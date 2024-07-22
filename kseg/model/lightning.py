@@ -1,22 +1,27 @@
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
 import cv2
 import nibabel as nib
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-import torchvision.utils as vutils
 import torchvision.transforms.functional as vfunctional
-
+import torchvision.utils as vutils
 from einops import rearrange
-from pathlib import Path
-from typing import Tuple, Dict, List, Any
-from torch.optim import lr_scheduler, Optimizer
-from torchmetrics import Specificity, Recall
+from torch.optim import Optimizer, lr_scheduler
+from torchmetrics import Recall, Specificity
 
-
-from kseg.data.transforms import InverseKSpace, Vec2Complex, Decompress
-from kseg.model.modules import DiceScore
-from kseg.model.modules import MLP, PerceiverIO, SkipMLP, ResMLP, Transformer
+from kseg.data.transforms import Decompress, InverseKSpace, Vec2Complex
+from kseg.model.modules import (
+    MLP,
+    DiceScore,
+    PerceiverIO,
+    ResMLP,
+    SkipMLP,
+    Transformer,
+)
 
 
 class LitModel(pl.LightningModule):
@@ -37,6 +42,7 @@ class LitModel(pl.LightningModule):
         self.scheduler_class = config['scheduler_class']
         self.input_domain = config['input_domain']
         self.label_domain = config['label_domain']
+        self.save_preds = True
         self.dice_score = DiceScore()
 
         if self.model_name == 'MLP':
@@ -108,7 +114,9 @@ class LitModel(pl.LightningModule):
         scheduler = self.scheduler_class(optimizer, self.step_size)
         return [optimizer], [scheduler]
 
-    def infer_batch(self, batch: Dict[str, dict]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def infer_batch(
+        self, batch: Dict[str, dict]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Propagate given batch through the Lightning Module.
 
         Args:
@@ -246,9 +254,12 @@ class LitModel(pl.LightningModule):
                 x, y, y_hat, self.logger, batch_idx, self.current_epoch, 'test'
             )
 
-        # Save tensors as NIfTI files
-        output_dir = Path(f'{self.logger.save_dir}/test_samples/batch_{batch_idx}/')
-        self.tensors_to_nifti(x, y, y_hat, output_dir)
+        if self.save_preds:
+            # Save tensors as NIfTI files
+            output_dir = Path(
+                f'{self.logger.save_dir}/test_samples/batch_{batch_idx}/'
+            )
+            self.tensors_to_nifti(x, y, y_hat, output_dir)
 
     def logits_to_mask(self, logits: torch.Tensor, num_classes: int):
         """Converts logits to a one-hot encoded segmentation mask.
@@ -269,7 +280,9 @@ class LitModel(pl.LightningModule):
             'b v x y z c -> b c v x y z',
         )
 
-    def evaluation_transform(self, variables: List[torch.Tensor]) -> List[torch.Tensor]:
+    def evaluation_transform(
+        self, variables: List[torch.Tensor]
+    ) -> List[torch.Tensor]:
         """Transform variables into pixel domain for evaluation.
 
         Args:
@@ -306,7 +319,8 @@ class LitModel(pl.LightningModule):
         """
         try:
             metric_dict = {
-                f"{prefix}_class_{i}": score.item() for i, score in enumerate(metrics)
+                f"{prefix}_class_{i}": score.item()
+                for i, score in enumerate(metrics)
             }
             self.log_dict(metric_dict, on_epoch=True)
         except TypeError:
@@ -344,13 +358,17 @@ class LitModel(pl.LightningModule):
         }
 
         # Transform x
-        x_slice = cv2.normalize(x_slice, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8U)
+        x_slice = cv2.normalize(
+            x_slice, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8U
+        )
         x_slice = cv2.cvtColor(x_slice, cv2.COLOR_GRAY2RGB)
         x_slice = np.transpose(torch.from_numpy(x_slice), axes=[2, 0, 1])
         x_slice = vfunctional.rotate(x_slice, 90)
 
         # Transform y
-        output_image = np.zeros((y_slice.shape[0], y_slice.shape[1], 3), dtype=np.uint8)
+        output_image = np.zeros(
+            (y_slice.shape[0], y_slice.shape[1], 3), dtype=np.uint8
+        )
         for value, color in color_map.items():
             mask = y_slice == value
             output_image[mask] = color
@@ -367,7 +385,9 @@ class LitModel(pl.LightningModule):
         for value, color in color_map.items():
             mask = y_hat_slice == value
             output_image[mask] = color
-        y_hat_slice = np.transpose(torch.from_numpy(output_image), axes=[2, 0, 1])
+        y_hat_slice = np.transpose(
+            torch.from_numpy(output_image), axes=[2, 0, 1]
+        )
         y_hat_slice = vfunctional.rotate(y_hat_slice, 90)
         y_hat_slice = torch.from_numpy(
             cv2.addWeighted(x_slice.numpy(), 0.5, y_hat_slice.numpy(), 0.5, 0)
@@ -408,12 +428,13 @@ class LitModel(pl.LightningModule):
         y = np.argmax(y, axis=1).squeeze(axis=1).astype('float')
         y_hat = np.argmax(y_hat, axis=1).squeeze(axis=1).astype('float')
 
-        nifti_img_x = nib.Nifti1Image(x[0], affine=np.eye(4))
-        nib.save(nifti_img_x, output_dir / 'input.nii.gz')
-        nifti_img_y = nib.Nifti1Image(y[0], affine=np.eye(4))
-        nib.save(nifti_img_y, output_dir / 'gt.nii.gz')
-        nifti_img_y_hat = nib.Nifti1Image(y_hat[0], affine=np.eye(4))
-        nib.save(nifti_img_y_hat, output_dir / 'pred.nii.gz')
+        for batch in range(x.shape[0]):
+            nifti_img_x = nib.Nifti1Image(x[batch], affine=np.eye(4))
+            nib.save(nifti_img_x, output_dir / f'input_{batch}.nii.gz')
+            nifti_img_y = nib.Nifti1Image(y[batch], affine=np.eye(4))
+            nib.save(nifti_img_y, output_dir / f'gt_{batch}.nii.gz')
+            nifti_img_y_hat = nib.Nifti1Image(y_hat[batch], affine=np.eye(4))
+            nib.save(nifti_img_y_hat, output_dir / f'pred_{batch}.nii.gz')
 
     def calculate_recall_specificity(
         self,
