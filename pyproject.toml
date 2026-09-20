@@ -23,7 +23,7 @@ dependencies = [
     'pyarrow',
     'pytorch_lightning == 2.0.5',
     'ray == 2.5.1',
-    'torch == 2.0.1',
+    'torch == 2.13.0',
     'torchio == 0.18.92',
     'torchmetrics == 0.9.3',
     'torchvision == 0.15.2'
