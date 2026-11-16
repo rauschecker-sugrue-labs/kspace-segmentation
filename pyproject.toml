@@ -21,7 +21,7 @@ dependencies = [
     'pandas',
     'perceiver-io @ git+https://github.com/egosche/perceiver-io@main',
     'pyarrow',
-    'pytorch_lightning == 2.0.5',
+    'pytorch_lightning == 2.6.1',
     'ray == 2.5.1',
     'torch == 2.0.1',
     'torchio == 0.18.92',
